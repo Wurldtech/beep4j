@@ -1,0 +1,77 @@
+
+- synchronization between IO thread and application thread(s)
+
+- introduce thread pool to provide inter channel asynchrony
+  - receiving messages
+    - channel receives messages synchronously
+    - channel receives replies synchronously
+  
+    while (true) {
+      waitForPromotion()
+      ChannelBuffer buf = fetchBuffer()
+      giveUpLead()
+      processEvents(buf)
+      follow()
+    }
+  
+- callback interface vs. request object?
+
+  - StartChannelRequest / StartChannelCallback
+  - CloseChannelRequest / CloseChannelCallback
+  
+  - callback
+    - executes immediately (from the callstack of the application)
+  - request object
+    - executes after the application code returns
+  - we have StartSessionRequest and StartChannelRequest ...
+  - ... but CloseCallback and CloseChannelCallback
+  - some tiny difference: the StartSessionRequest is used to collect profiles
+  - CloseChannelCallback#closeAccepted / closeDeclined
+    - when passed to the application, it should be named accept / decline
+    - because that's how our naming convention is:
+      - callback methods are always named like event listener methods
+      - action methods are named like normal Java methods, i.e. verb[object]()
+    - for consistency reasons, we probably need a CloseChannelRequest
+  
+- SessionHandler
+  - add method startChannelFailed?
+  - add method exceptionCaught?
+
+- ChannelManagementProfile
+  - how to handle close and close requests of channel 0
+  - method ChannelManagementProfile#closeRequested?
+
+- support Content-Transfer-Encoding: base64, (quoted-printable)
+
+- review of exception handling on callback interfaces
+  - SessionHandler
+  - ChannelHandler
+  - ReplyListener
+  
+  - what is a sensitive action to these kind of exception?
+    - abort session?
+    - log and silently ignore exception? log into special application log?
+    - ???
+  
+- general review of exception handling
+    
+- GenericSessionHandler -> SessionHandler
+  - factory:ChannelHandlerFactory
+  - advertisedProfiles:String[]
+
+  - connectionEstablished registers profiles
+  - channelStartRequested selects first supported profile according to list
+  
+  - maybe desired, wait for user feedback
+
+- ideas
+  - StartSessionRequest -> StartSessionEvent
+    -> no, it is a request, not an event
+  - StartChannelRequest -> StartChannelEvent
+    -> no, it is a request, not an event
+  - Session#close(:CloseCallback)
+    - then we have SessionHandler#channelClosed and CloseCallback#closeAccepted
+    - the same information at two places? maybe this makes sense, maybe not
+    -> leave it as it is at the moment
+  - tighter coupling between Mina and beepj?
+    - could easily be reintroduced later

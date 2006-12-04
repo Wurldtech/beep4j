@@ -1,0 +1,9 @@
+MSG 0 1 .52 158
+Content-Type: application/beep+xml
+
+<start number='1'>
+   <profile uri='http://iana.org/beep/TLS'>
+       <![CDATA[<ready />]]>
+   </profile>
+</start>
+END

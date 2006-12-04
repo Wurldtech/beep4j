@@ -1,0 +1,5 @@
+RPY 0 1 . 221 78
+Content-Type: application/beep+xml
+
+<profile uri='http://iana.org/beep/SASL/OTP' />
+END

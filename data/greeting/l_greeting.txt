@@ -1,0 +1,7 @@
+RPY 0 0 . 0 110
+Content-Type: application/beep+xml
+
+<greeting>
+   <profile uri='http://iana.org/beep/TLS' />
+</greeting>
+END

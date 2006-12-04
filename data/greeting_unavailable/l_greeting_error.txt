@@ -1,0 +1,5 @@
+ERR 0 0 . 0 60
+Content-Type: application/beep+xml
+
+<error code='421' />
+END

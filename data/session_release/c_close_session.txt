@@ -1,0 +1,5 @@
+MSG 0 1 . 52 60
+Content-Type: application/beep+xml
+
+<close code='200' />
+END

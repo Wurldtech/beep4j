@@ -1,0 +1,5 @@
+ERR 0 1 . 264 79
+Content-Type: application/beep+xml
+
+<error code='550'>still working</error>
+END

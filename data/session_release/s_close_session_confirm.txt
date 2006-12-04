@@ -1,0 +1,5 @@
+RPY 0 1 . 264 46
+Content-Type: application/beep+xml
+
+<ok />
+END

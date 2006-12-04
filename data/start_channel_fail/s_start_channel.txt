@@ -1,0 +1,6 @@
+ERR 0 1 . 221 127
+Content-Type: application/beep+xml
+
+<error code='501'>number attribute
+in &lt;start&gt; element must be odd-valued</error>
+END

@@ -1,0 +1,7 @@
+RPY 0 1 . 110 121
+Content-Type: application/beep+xml
+
+<profile uri='http://iana.org/beep/TLS'>
+    <![CDATA[<proceed />]]>
+</profile>
+END
