@@ -17,7 +17,7 @@
   <distributionManagement>
     <site>
       <id>website</id>
-      <url>scp://www.mycompany.com/www/docs/project/</url>
+      <url>scp://shell.sourceforge.net:/home/groups/b/be/beep4j/htdocs</url>
     </site>
   </distributionManagement>
   <dependencies>
