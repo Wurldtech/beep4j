@@ -7,6 +7,13 @@
   <version>0.1-SNAPSHOT</version>
   <name></name>
   <url>http://beep4j.sf.net/</url>
+  <repositories>
+    <repository>
+      <id>mina.apache.org</id>
+      <name>MINA Maven SNAPSHOT Repository</name>
+      <url>http://people.apache.org/repo/m2-snapshot-repository</url>
+    </repository>
+  </repositories>
   <dependencies>
     <dependency>
       <groupId>junit</groupId>
@@ -35,7 +42,7 @@
     <dependency>
       <groupId>org.apache.mina</groupId>
       <artifactId>mina-core</artifactId>
-      <version>1.0.0</version>
+      <version>1.0.2-20070130.100624-9</version>
     </dependency>
   </dependencies>
   <build>

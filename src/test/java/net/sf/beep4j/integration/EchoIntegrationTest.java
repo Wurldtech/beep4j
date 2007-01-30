@@ -51,18 +51,15 @@ import org.apache.mina.transport.vmpipe.VmPipeConnector;
 public class EchoIntegrationTest extends TestCase {
 	
 	public void testOneToManyEcho() throws Exception {
-		System.err.println("starting one to many test");
 		ProfileInfo profile = new ProfileInfo(OneToManyEchoProfileHandler.PROFILE, "8192");
 		String text = loadMessage("rfc3080.txt");
 		doTest(profile, text, 8002);
 	}
 	
 	public void testXEcho() throws Exception {
-		System.err.println("starting one to one test");
 		ProfileInfo profile = new ProfileInfo(EchoProfileHandler.PROFILE);
 		String text = loadMessage("rfc3080.txt");
 		doTest(profile, text, 8001);
-		Thread.sleep(500);
 	}
 	
 	protected void doTest(ProfileInfo profile, String text, int port) throws Exception {
