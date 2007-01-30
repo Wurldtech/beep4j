@@ -14,6 +14,12 @@
       <url>http://people.apache.org/repo/m2-snapshot-repository</url>
     </repository>
   </repositories>
+  <distributionManagement>
+    <site>
+      <id>website</id>
+      <url>scp://www.mycompany.com/www/docs/project/</url>
+    </site>
+  </distributionManagement>
   <dependencies>
     <dependency>
       <groupId>junit</groupId>

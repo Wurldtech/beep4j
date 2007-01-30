@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document>
+  <properties>
+    <!--<author email=""></author>-->
+    <title>Overview</title>
+  </properties>
+
+  <body>
+    <section name="Overview">
+      <p>
+        <b>beep4j</b> is an open-source implementation of the BEEP specification.
+        BEEP is specified in RFC3080 and RFC3081. You find detailed information at
+        the <a href="http://www.beepcore.org/">beepcore website</a>. The goal of
+        this project is to build a basic implementation of BEEP in Java. It is
+        unlikely that all the features of BEEP will be implemented.
+        
+        <!--<ul>
+          <li><a href="features.html">Feature List</a></li>
+          <li><a href="testimonials.html">Testimonials</a></li>
+          <li><a href="getting_started.html">Getting Started</a></li>
+          <li><a href="http://www.apache.org/dyn/closer.cgi/directory/mina/">Downloads</a></li>
+          <li><a href="faq.html">F.A.Q</a></li>
+          <li><a href="roadmap.html">Roadmap</a></li>
+          <li><a href="http://issues.apache.org/jira/browse/DIRMINA?report=com.atlassian.jira.plugin.system.project:changelog-panel&amp;subset=-1">Changes</a></li>
+          <li><a href="history.html">History</a></li>
+        </ul>-->
+      </p>
+      <p>
+        beep4j builds upon <a href="http://mina.apache.org/">Apache MINA</a>
+        (Multipurpose Infrastructure for Network Applications).
+        MINA is a network application framework which helps users develop high
+        performance and high scalability network applications easily.
+      </p>
+    </section>
+    <!--<section name="Community">
+      <p>
+        MINA has an active and responsive community you can contact at any time.
+        <ul>
+          <li><a href="mail-lists.html">Mailing List</a></li>
+          <li><a href="http://issues.apache.org/jira/browse/DIRMINA">Issue Tracker</a></li>
+          <li><a href="http://wiki.apache.org/directory/MinaHome">Wiki Pages</a></li>
+        </ul>
+      </p>
+    </section>
+    <section name="References">
+      <p>
+        <ul>
+          <li><a href="apidocs/index.html">JavaDocs</a></li>
+          <li><a href="http://svn.apache.org/viewcvs.cgi/directory/trunks/mina/examples/src/main/java/org/apache/mina/examples/">Examples</a></li>
+          <li><a href="http://svn.apache.org/viewcvs.cgi/directory/trunks/mina/">Source code</a></li>
+        </ul>
+      </p>
+    </section>-->
+  </body>
+</document>
