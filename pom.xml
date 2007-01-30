@@ -4,9 +4,34 @@
   <groupId>net.sf.beep4j</groupId>
   <artifactId>beep4j</artifactId>
   <packaging>jar</packaging>
+  <name>beep4j</name>
   <version>0.1-SNAPSHOT</version>
-  <name></name>
+  <description>
+    beep4j is an opensource Java implementation of BEEP (RFC3080 and RFC3081).
+  </description>
   <url>http://beep4j.sf.net/</url>
+  <developers>
+    <developer>
+      <id>rasss</id>
+      <name>Simon Raess</name>
+      <roles>
+        <role>Project lead</role>
+        <role>Java developer</role>
+      </roles>
+    </developer>
+  </developers>
+  <licenses>
+    <license>
+      <name>The Apache Software License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+  <scm>
+    <connection>scm:svn:https://svn.sourceforge.net/svnroot/beep4j/trunk/</connection>
+    <developerConnection>scm:svn:https://svn.sourceforge.net/svnroot/beep4j/trunk/</developerConnection>
+    <url>http://svn.sourceforge.net/viewcvs.cgi/beep4j/trunk/</url>
+  </scm>
   <repositories>
     <repository>
       <id>mina.apache.org</id>
@@ -14,12 +39,6 @@
       <url>http://people.apache.org/repo/m2-snapshot-repository</url>
     </repository>
   </repositories>
-  <distributionManagement>
-    <site>
-      <id>website</id>
-      <url>scp://shell.sourceforge.net:/home/groups/b/be/beep4j/htdocs</url>
-    </site>
-  </distributionManagement>
   <dependencies>
     <dependency>
       <groupId>junit</groupId>
@@ -63,4 +82,18 @@
       </plugin>
     </plugins>
   </build>
+  <distributionManagement>
+    <repository>
+      <id>shell.sourceforge.net</id>
+      <url>scp://shell.sourceforge.net/home/groups/s/sp/spring-rich-c/htdocs/maven2repository</url>
+    </repository>
+    <snapshotRepository>
+      <id>shell.sourceforge.net</id>
+      <url>scp://shell.sourceforge.net/home/groups/b/be/beep4j/htdocs/maven2snapshotrepository</url>
+    </snapshotRepository>
+    <site>
+       <id>shell.sourceforge.net</id>
+       <url>scp://shell.sourceforge.net/home/groups/s/sp/spring-rich-c/htdocs/</url>
+    </site>
+  </distributionManagement>
 </project>

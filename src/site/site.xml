@@ -1,29 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project>
 
-    <skin>
-        <groupId>org.apache.maven.skins</groupId>
-        <artifactId>maven-default-skin</artifactId>
-        <version>1.0</version>
-    </skin>
-    <bannerLeft>
-        <name>beep4j</name>
-        <href>http://beep4j.sourceforge.net/</href>
-    </bannerLeft>
-    <bannerRight>
-        <name>Spring framework</name>
-        <src>http://www.springframework.org/buttons/spring_clear.png</src>
-        <href>http://www.springframework.org</href>
-    </bannerRight>
+  <skin>
+    <groupId>org.apache.maven.skins</groupId>
+    <artifactId>maven-default-skin</artifactId>
+    <version>1.0</version>
+  </skin>
+  <bannerLeft>
+    <name>${project.name}</name>
+    <href>http://beep4j.sourceforge.net/</href>
+  </bannerLeft>
   
-    <poweredBy>
-        <logo name="Spring Framework" href="http://www.springframework.org/"
-            img="http://www.springframework.org/buttons/spring_small.png"/>
-        <logo name="Hosted on SourceForge.net" href="http://sourceforge.net"
-            img="http://sflogo.sourceforge.net/sflogo.php?group_id=113660&amp;type=2"/>
-        <logo name="Build with Maven 2" href="http://maven.apache.org/"
-            img="images/logos/maven-feather.png"/>
-    </poweredBy>
+  <poweredBy>
+    <logo name="Hosted on SourceForge.net" href="http://sourceforge.net"
+          img="http://sflogo.sourceforge.net/sflogo.php?group_id=113660&amp;type=2"/>
+    <logo name="Build with Maven 2" href="http://maven.apache.org/"
+          img="images/logos/maven-feather.png"/>
+  </poweredBy>
   
   <body>
      <!--<links>
