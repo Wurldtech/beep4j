@@ -142,12 +142,6 @@ public class DefaultChannelController implements ChannelController {
 	long id;
 	
 	public synchronized void checkFrame(long seqno, int payloadSize) {
-		long current = Thread.currentThread().getId();
-		if (current != id) {
-			System.err.println(id);
-		}
-		id = current;
-		
 		if (seqno != window.getPosition()) {
 			throw new ProtocolException("sequence number " + seqno + " does not "
 					+ "match expected sequence number " + window.getPosition());
