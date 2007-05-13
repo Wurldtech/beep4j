@@ -339,11 +339,11 @@ public class SessionImpl implements MessageHandler, SessionManager, InternalSess
 		return greeting.getProfiles();
 	}
 	
-	public void startChannel(String profileUri, ChannelHandler handler) {
+	public synchronized void startChannel(String profileUri, ChannelHandler handler) {
 		startChannel(new ProfileInfo(profileUri), handler);
 	}
 	
-	public void startChannel(final ProfileInfo profile, final ChannelHandler handler) {
+	public synchronized void startChannel(final ProfileInfo profile, final ChannelHandler handler) {
 		startChannel(new ProfileInfo[] { profile }, new ChannelHandlerFactory() {
 			public ChannelHandler createChannelHandler(ProfileInfo info) {
 				if (!profile.getUri().equals(info.getUri())) {
@@ -358,11 +358,11 @@ public class SessionImpl implements MessageHandler, SessionManager, InternalSess
 		});
 	}
 	
-	public void startChannel(ProfileInfo[] profiles, ChannelHandlerFactory factory) {
+	public synchronized void startChannel(ProfileInfo[] profiles, ChannelHandlerFactory factory) {
 		getCurrentState().startChannel(profiles, factory);
 	}
 	
-	public void close() {
+	public synchronized void close() {
 		getCurrentState().closeSession();
 	}
 	
@@ -378,7 +378,7 @@ public class SessionImpl implements MessageHandler, SessionManager, InternalSess
 	 * - register the reply listener under that number
 	 * - pass the message to the underlying transport mapping
 	 */	
-	public void sendMessage(int channelNumber, Message message, ReplyListener listener) {
+	public synchronized void sendMessage(int channelNumber, Message message, ReplyListener listener) {
 		getCurrentState().sendMessage(channelNumber, message, listener);
 	}
 
@@ -386,7 +386,7 @@ public class SessionImpl implements MessageHandler, SessionManager, InternalSess
 	 * This method is called by the channel implementation to send a close channel
 	 * request to the other peer.
 	 */
-	public void requestChannelClose(final int channelNumber, final CloseChannelCallback callback) {
+	public synchronized void requestChannelClose(final int channelNumber, final CloseChannelCallback callback) {
 		Assert.notNull("callback", callback);
 		channelManagementProfile.closeChannel(channelNumber, new CloseChannelCallback() {
 			public void closeDeclined(int code, String message) {
@@ -408,7 +408,7 @@ public class SessionImpl implements MessageHandler, SessionManager, InternalSess
 	 * This method is invoked by the ChannelManagementProfile when the other
 	 * peer requests creating a new channel.
 	 */
-	public StartChannelResponse channelStartRequested(int channelNumber, ProfileInfo[] profiles) {
+	public synchronized StartChannelResponse channelStartRequested(int channelNumber, ProfileInfo[] profiles) {
 		return getCurrentState().channelStartRequested(channelNumber, profiles);
 	}
 	
@@ -418,7 +418,7 @@ public class SessionImpl implements MessageHandler, SessionManager, InternalSess
 	 * that is the application, which decides what to do with the request to
 	 * close the channel.
 	 */
-	public void channelCloseRequested(final int channelNumber, final CloseChannelRequest request) {
+	public synchronized void channelCloseRequested(final int channelNumber, final CloseChannelRequest request) {
 		ChannelHandler handler = getChannelHandler(channelNumber);
 		handler.closeRequested(new CloseChannelRequest() {
 			public void reject() {
@@ -431,7 +431,7 @@ public class SessionImpl implements MessageHandler, SessionManager, InternalSess
 		});
 	}
 	
-	public void sessionCloseRequested(CloseCallback callback) {
+	public synchronized void sessionCloseRequested(CloseCallback callback) {
 		getCurrentState().sessionCloseRequested(callback);
 	}
 	
@@ -440,28 +440,28 @@ public class SessionImpl implements MessageHandler, SessionManager, InternalSess
 	
 	// --> start of MessageHandler methods <-- 
 
-	public void receiveMSG(int channelNumber, int messageNumber, Message message) {
+	public synchronized void receiveMSG(int channelNumber, int messageNumber, Message message) {
 		info("received MSG: channel=" + channelNumber + ",message=" + messageNumber);
 		getCurrentState().receiveMSG(channelNumber, messageNumber, message);
 	}
 
-	public void receiveANS(int channelNumber, int messageNumber, int answerNumber, Message message) {
+	public synchronized void receiveANS(int channelNumber, int messageNumber, int answerNumber, Message message) {
 		info("received ANS: channel=" + channelNumber + ",message=" + messageNumber
 				 + ",answer=" + answerNumber);
 		getCurrentState().receiveANS(channelNumber, messageNumber, answerNumber, message);
 	}
 	
-	public void receiveNUL(int channelNumber, int messageNumber) {
+	public synchronized void receiveNUL(int channelNumber, int messageNumber) {
 		info("received NUL: channel=" + channelNumber + ",message=" + messageNumber);
 		getCurrentState().receiveNUL(channelNumber, messageNumber);
 	}
 
-	public void receiveERR(int channelNumber, int messageNumber, Message message) {
+	public synchronized void receiveERR(int channelNumber, int messageNumber, Message message) {
 		info("received ERR: channel=" + channelNumber + ",message=" + messageNumber);
 		getCurrentState().receiveERR(channelNumber, messageNumber, message);
 	}
 		
-	public void receiveRPY(int channelNumber, int messageNumber, Message message) {
+	public synchronized void receiveRPY(int channelNumber, int messageNumber, Message message) {
 		info("received RPY: channel=" + channelNumber + ",message=" + messageNumber);
 		getCurrentState().receiveRPY(channelNumber, messageNumber, message);
 	}
@@ -476,17 +476,17 @@ public class SessionImpl implements MessageHandler, SessionManager, InternalSess
 	 * ChannelManagementProfile then asks the application (SessionHandler)
 	 * whether to accept the connection and sends the appropriate response.
 	 */
-	public void connectionEstablished(SocketAddress address) {
+	public synchronized void connectionEstablished(SocketAddress address) {
 		info("connection established to " + address);
 		getCurrentState().connectionEstablished(address);
 	}
 	
-	public void exceptionCaught(Throwable cause) {
+	public synchronized void exceptionCaught(Throwable cause) {
 		// TODO: implement this method
 		LOG.warn("exception caught by transport", cause);
 	}
 	
-	public void messageReceived(ByteBuffer buffer) {
+	public synchronized void messageReceived(ByteBuffer buffer) {
 		if (LOG.isDebugEnabled()) {
 			ByteArrayOutputStream stream = new ByteArrayOutputStream();
 			HexDump.dump(buffer, stream);
@@ -513,7 +513,7 @@ public class SessionImpl implements MessageHandler, SessionManager, InternalSess
 		}
 	}
 	
-	public void connectionClosed() {
+	public synchronized void connectionClosed() {
 		info("underlying connection has been closed");
 		getCurrentState().connectionClosed();
 	}
