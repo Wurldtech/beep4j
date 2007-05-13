@@ -34,11 +34,11 @@ public class MinaTransport extends IoHandlerAdapter implements Transport {
 	
 	private IoSession session;
 	
-	private TransportContext beepSession;
+	private TransportContext context;
 	
 	public MinaTransport(boolean initiator, SessionHandler sessionHandler) {
 		TransportMapping mapping = new TCPMapping(this);
-		beepSession = new SessionImpl(initiator, sessionHandler, mapping);
+		context = new SessionImpl(initiator, sessionHandler, mapping);
 	}
 	
 	public void sendBytes(java.nio.ByteBuffer buffer) {
@@ -55,7 +55,7 @@ public class MinaTransport extends IoHandlerAdapter implements Transport {
 	public void sessionOpened(IoSession session) throws Exception {
 		LOG.info("transport session opened");
 		this.session = session;
-		beepSession.connectionEstablished(session.getRemoteAddress());
+		context.connectionEstablished(session.getRemoteAddress());
 	}
 	
 	@Override
@@ -67,19 +67,19 @@ public class MinaTransport extends IoHandlerAdapter implements Transport {
 	public void messageReceived(IoSession session, Object message) throws Exception {
 		ByteBuffer buffer = (ByteBuffer) message;
 		LOG.info("received " + buffer.remaining() + " bytes in transport layer");
-		beepSession.messageReceived(buffer.buf());
+		context.messageReceived(buffer.buf());
 	}
 	
 	@Override
 	public void exceptionCaught(IoSession session, Throwable cause) throws Exception {
 		LOG.info("caugth exception", cause);
-		beepSession.exceptionCaught(cause);
+		context.exceptionCaught(cause);
 	}
 	
 	@Override
 	public void sessionClosed(IoSession session) throws Exception {
 		LOG.info("transport session closed by remote peer");
-		beepSession.connectionClosed();
+		context.connectionClosed();
 	}
 	
 }

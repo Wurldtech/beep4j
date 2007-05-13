@@ -139,7 +139,15 @@ public class DefaultChannelController implements ChannelController {
 		LOG.info("sendRPY caused " + count + " frames to be sent");
 	}
 	
-	public void checkFrame(long seqno, int payloadSize) {
+	long id;
+	
+	public synchronized void checkFrame(long seqno, int payloadSize) {
+		long current = Thread.currentThread().getId();
+		if (current != id) {
+			System.err.println(id);
+		}
+		id = current;
+		
 		if (seqno != window.getPosition()) {
 			throw new ProtocolException("sequence number " + seqno + " does not "
 					+ "match expected sequence number " + window.getPosition());

@@ -83,13 +83,11 @@ public class TCPMapping implements TransportMapping, ChannelControllerFactory {
 	// --> start of TransportMapping methods <--
 	
 	public void checkFrame(int channel, long seqno, int size) {
-		ChannelController status = getChannelController(channel);
-		status.checkFrame(seqno, size);
+		getChannelController(channel).checkFrame(seqno, size);
 	}
 	
 	public void frameReceived(int channel, long seqno, int size) {
-		ChannelController status = getChannelController(channel);
-		status.frameReceived(seqno, size);
+		getChannelController(channel).frameReceived(seqno, size);
 	}
 
 	public void processMappingFrame(String[] tokens) {
@@ -103,33 +101,27 @@ public class TCPMapping implements TransportMapping, ChannelControllerFactory {
 		int size = header.getWindowSize();
 			
 		// adapt the local view of the other peers window			
-		ChannelController status = getChannelController(channel);
-		status.updateSendWindow(ackno, size);
+		getChannelController(channel).updateSendWindow(ackno, size);
 	}
 	
 	public void sendANS(int channel, int messageNumber, int answerNumber, Message message) {
-		ChannelController status = getChannelController(channel);
-		status.sendANS(messageNumber, answerNumber, message);
+		getChannelController(channel).sendANS(messageNumber, answerNumber, message);
 	}
 	
 	public void sendERR(int channel, int messageNumber, Message message) {
-		ChannelController status = getChannelController(channel);
-		status.sendERR(messageNumber, message);
+		getChannelController(channel).sendERR(messageNumber, message);
 	}
 	
 	public void sendMSG(int channel, int messageNumber, Message message) {
-		ChannelController status = getChannelController(channel);
-		status.sendMSG(messageNumber, message);		
+		getChannelController(channel).sendMSG(messageNumber, message);		
 	}
 	
 	public void sendNUL(int channel, int messageNumber) {
-		ChannelController status = getChannelController(channel);
-		status.sendNUL(messageNumber);
+		getChannelController(channel).sendNUL(messageNumber);
 	}
 	
 	public void sendRPY(int channel, int messageNumber, Message message) {
-		ChannelController status = getChannelController(channel);
-		status.sendRPY(messageNumber, message);
+		getChannelController(channel).sendRPY(messageNumber, message);
 	}
 	
 	public void closeTransport() {
