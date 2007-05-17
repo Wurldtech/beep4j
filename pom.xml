@@ -97,7 +97,7 @@
   <distributionManagement>
     <repository>
       <id>shell.sourceforge.net</id>
-      <url>scp://shell.sourceforge.net/home/groupsb/be/beep4j/htdocs/maven2repository</url>
+      <url>scp://shell.sourceforge.net/home/groups/b/be/beep4j/htdocs/maven2repository</url>
     </repository>
     <snapshotRepository>
       <id>shell.sourceforge.net</id>
