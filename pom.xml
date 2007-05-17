@@ -32,6 +32,15 @@
     <developerConnection>scm:svn:https://svn.sourceforge.net/svnroot/beep4j/trunk/</developerConnection>
     <url>http://svn.sourceforge.net/viewcvs.cgi/beep4j/trunk/</url>
   </scm>
+  <mailingLists>
+    <mailingList>
+      <name>User List</name>
+      <subscribe>beep4j-user-subscribe@lists.sourceforge.net</subscribe>
+      <unsubscribe>beep4j-user-unsubscribe@lists.sourceforge.net</unsubscribe>
+      <post>beep4j-user@lists.sourceforge.net</post>
+      <archive>http://sourceforge.net/mailarchive/forum.php?forum_name=beep4j-user</archive>
+    </mailingList>
+  </mailingLists>
   <repositories>
     <repository>
       <id>mina.apache.org</id>
