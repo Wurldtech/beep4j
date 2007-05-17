@@ -32,6 +32,12 @@
         performance and high scalability network applications easily.
       </p>
     </section>
+    <section name="News">
+      <h3>Release beep4j 0.1.0</h3>
+      <p>The first official release is available. You can download the
+         version 0.1.0 from the sourceforge website:
+         <a href="http://sourceforge.net/project/showfiles.php?group_id=182141&amp;package_id=211216&amp;release_id=509120">beep4j-0.1.0.jar</a>.</p>
+    </section>
     <!--<section name="Community">
       <p>
         MINA has an active and responsive community you can contact at any time.
