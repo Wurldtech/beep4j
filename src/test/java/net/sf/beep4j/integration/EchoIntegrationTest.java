@@ -23,6 +23,7 @@ import java.io.Writer;
 import java.net.SocketAddress;
 import java.util.concurrent.Semaphore;
 
+import junit.framework.Assert;
 import junit.framework.TestCase;
 import net.sf.beep4j.Channel;
 import net.sf.beep4j.CloseChannelCallback;
@@ -53,21 +54,24 @@ public class EchoIntegrationTest extends TestCase {
 	public void testOneToManyEcho() throws Exception {
 		ProfileInfo profile = new ProfileInfo(OneToManyEchoProfileHandler.PROFILE, "8192");
 		String text = loadMessage("rfc3080.txt");
-		doTest(profile, text, 8002);
+		doTest(profile, 1, text, 8002);
 	}
 	
-	public void testXEcho() throws Exception {
+	public void testEcho() throws Exception {
 		ProfileInfo profile = new ProfileInfo(EchoProfileHandler.PROFILE);
 		String text = loadMessage("rfc3080.txt");
-		doTest(profile, text, 8001);
+		doTest(profile, 1, text, 8001);
 	}
 	
-	protected void doTest(ProfileInfo profile, String text, int port) throws Exception {
-		Semaphore sem = new Semaphore(-1);
+	public void testSimultanousEcho() throws Exception {
+		ProfileInfo profile = new ProfileInfo(EchoProfileHandler.PROFILE);
+		String text = loadMessage("rfc3080.txt");
+		doTest(profile, 3, text, 8001);
+	}
+	
+	protected void doTest(ProfileInfo profile, int channels, String text, int port) throws Exception {
+		Semaphore sem = new Semaphore(-channels);
 		
-//		IoAcceptor acceptor = new SocketAcceptor();
-//		SocketAddress address = new InetSocketAddress(port);
-//		IoConnector connector = new SocketConnector();
 		IoAcceptor acceptor = new VmPipeAcceptor();
 		SocketAddress address = new VmPipeAddress(port);
 
@@ -75,7 +79,7 @@ public class EchoIntegrationTest extends TestCase {
 		listener.bind(address, new EchoSessionHandlerFactory(sem));
 		
 		IoConnector connector = new VmPipeConnector();
-		EchoClientHandler client = new EchoClientHandler(profile, text, sem);
+		EchoClientHandler client = new EchoClientHandler(profile, channels, text, sem);
 		
 		Initiator initiator = new MinaInitiator(connector);
 		initiator.connect(address, client);
@@ -83,7 +87,7 @@ public class EchoIntegrationTest extends TestCase {
 		sem.acquire();
 		listener.unbind(address);
 		
-		assertEquals(text, client.getReceivedText());
+		client.assertEquals(text);
 	}
 	
 	private String loadMessage(String resource) throws IOException {
@@ -155,22 +159,28 @@ public class EchoIntegrationTest extends TestCase {
 		private final ProfileInfo profile;
 		private final String text;
 		private final Semaphore semaphore;
-		private Talker talker;
+		private Talker[] talkers;
 		
-		private EchoClientHandler(ProfileInfo profile, String text, Semaphore semaphore) {
+		private EchoClientHandler(ProfileInfo profile, int channels, String text, Semaphore semaphore) {
 			this.profile = profile;
+			this.talkers = new Talker[channels];
 			this.text = text;
 			this.semaphore = semaphore;
 		}
 		
-		public String getReceivedText() {
-			return talker.getReceivedText();
+		public void assertEquals(String text) {
+			for (int i = 0; i < talkers.length; i++) {
+				Talker talker = talkers[i];
+				talker.assertEquals(text);
+			}
 		}
 		
 		@Override
 		public void sessionOpened(Session session) {
-			talker = new Talker(text, semaphore);
-			session.startChannel(profile, talker);
+			for (int i = 0; i < talkers.length; i++) {
+				talkers[i] = new Talker(text, semaphore);
+				session.startChannel(profile, talkers[i]);
+			}
 		}
 	}
 	
@@ -187,8 +197,8 @@ public class EchoIntegrationTest extends TestCase {
 			this.semaphore = semaphore;
 		}
 		
-		public String getReceivedText() {
-			return listener.getReceivedText();
+		public void assertEquals(String text) {
+			Assert.assertEquals(text, listener.getReceivedText());
 		}
 		
 		public void channelOpened(Channel c) {

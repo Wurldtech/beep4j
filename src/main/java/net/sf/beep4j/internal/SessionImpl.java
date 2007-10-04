@@ -66,7 +66,8 @@ import org.slf4j.LoggerFactory;
  * 
  * @author Simon Raess
  */
-public class SessionImpl implements MessageHandler, SessionManager, InternalSession, TransportContext {
+public class SessionImpl 
+		implements MessageHandler, SessionManager, InternalSession, TransportContext, FrameHandlerFactory {
 	
 	private final Logger LOG = LoggerFactory.getLogger(SessionImpl.class);
 	
@@ -118,12 +119,13 @@ public class SessionImpl implements MessageHandler, SessionManager, InternalSess
 		this.mapping = mapping;
 		addSessionListener(mapping);
 		
+		DelegatingFrameHandler frameHandler = new DelegatingFrameHandler(this);
+		addSessionListener(frameHandler);
+		
 		this.channelManagementProfile = createChannelManagementProfile(initiator);
 		initChannelManagementProfile();
 		
 		this.channelNumberSequence = new IntegerSequence(initiator ? 1 : 2, 2);
-
-		FrameHandler frameHandler = new MessageAssembler(this); 
 		this.parser = createStreamParser(frameHandler, mapping);
 		
 		initialState = new InitialState();
@@ -400,7 +402,16 @@ public class SessionImpl implements MessageHandler, SessionManager, InternalSess
 	}
 	
 	// --> end of InternalSession methods <--
-
+	
+	
+	// --> start of FrameHandlerFactory methods <--
+	
+	public FrameHandler createFrameHandler() {
+		return new MessageAssembler(this);
+	}
+	
+	// --> end of FrameHandlerFactory methods <--
+	
 	
 	// --> start of SessionManager methods <--
 	

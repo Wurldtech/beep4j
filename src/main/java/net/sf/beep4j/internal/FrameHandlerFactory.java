@@ -15,22 +15,13 @@
  */
 package net.sf.beep4j.internal;
 
-import net.sf.beep4j.BeepException;
-
-public class InternalException extends BeepException {
-
-	private static final long serialVersionUID = -1708414080557717842L;
-
-	public InternalException(String message, Throwable cause) {
-		super(message, cause);
-	}
-
-	public InternalException(String message) {
-		super(message);
-	}
-
-	public InternalException(Throwable cause) {
-		super(cause);
-	}
-
+/**
+ * Factory for {@link FrameHandler} objects.
+ * 
+ * @author Simon Raess
+ */
+public interface FrameHandlerFactory {
+	
+	FrameHandler createFrameHandler();
+	
 }
