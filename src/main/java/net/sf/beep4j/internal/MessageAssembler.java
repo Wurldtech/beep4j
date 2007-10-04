@@ -133,9 +133,6 @@ public class MessageAssembler implements FrameHandler {
 			return last != null;
 		}
 		
-		/* (non-Javadoc)
-		 * @see ch.iserver.ace.v2.MessageAssembler.State#append(ch.iserver.ace.Frame, ch.iserver.ace.v2.MessageHandler)
-		 */
 		public void append(Frame frame, MessageHandler handler) {
 			DataHeader header = (DataHeader) frame.getHeader();
 			MessageType type = header.getType();
@@ -206,9 +203,6 @@ public class MessageAssembler implements FrameHandler {
 			this.fragments = new HashMap<Integer, List<Frame>>();
 		}
 		
-		/* (non-Javadoc)
-		 * @see ch.iserver.ace.v2.MessageAssembler.State#append(ch.iserver.ace.Frame, ch.iserver.ace.v2.MessageHandler)
-		 */
 		public void append(Frame frame, MessageHandler handler) {
 			MessageType type = frame.getType();
 			
