@@ -54,7 +54,7 @@ public class EchoIntegrationTest extends TestCase {
 	public void testOneToManyEcho() throws Exception {
 		ProfileInfo profile = new ProfileInfo(OneToManyEchoProfileHandler.PROFILE, "8192");
 		String text = loadMessage("rfc3080.txt");
-		doTest(profile, 1, text, 8002);
+		doTest(profile, 1, text, 8001);
 	}
 	
 	public void testEcho() throws Exception {
@@ -65,6 +65,12 @@ public class EchoIntegrationTest extends TestCase {
 	
 	public void testSimultanousEcho() throws Exception {
 		ProfileInfo profile = new ProfileInfo(EchoProfileHandler.PROFILE);
+		String text = loadMessage("rfc3080.txt");
+		doTest(profile, 3, text, 8001);
+	}
+	
+	public void testOneToManySimultanousEcho() throws Exception {
+		ProfileInfo profile = new ProfileInfo(OneToManyEchoProfileHandler.PROFILE, "8192");
 		String text = loadMessage("rfc3080.txt");
 		doTest(profile, 3, text, 8001);
 	}
