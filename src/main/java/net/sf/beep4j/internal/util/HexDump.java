@@ -48,7 +48,7 @@ public final class HexDump {
 			buffer.get(lineBuffer, 0, length);
 			
 			for (int j = 0; j < length; j++) {
-				String hex = Integer.toHexString(lineBuffer[j]);
+				String hex = Integer.toHexString(lineBuffer[j] & 0xFF);
 				hex = hex.length() == 1 ? "0" + hex : hex;
 				writer.write(hex + " ");
 			}

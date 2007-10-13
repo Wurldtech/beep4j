@@ -126,4 +126,51 @@ public class HeaderStateTest extends TestCase {
 		control.verify();
 	}
 	
+	public void testProcessSplitHeader() throws Exception {
+		MockControl control = MockControl.createControl(ParseStateContext.class);
+		control.setDefaultMatcher(MockControl.ARRAY_MATCHER);
+		ParseStateContext context = (ParseStateContext) control.getMock();
+
+		context.handleHeader(new String[] { "MSG", "0", "0", ".", "0", "100" });
+		control.replay();
+
+		Charset charset = Charset.forName("US-ASCII");
+		ByteBuffer buffer1 = charset.encode("MSG 0 0 . 0 100\r");
+
+		ParseState state = new HeaderState();
+		assertFalse(state.process(buffer1, context));
+		assertEquals(16, buffer1.position());
+
+		ByteBuffer buffer2 = charset.encode("\nbluberi");
+
+		assertTrue(state.process(buffer2, context));
+		assertEquals(1, buffer2.position());
+
+		control.verify();
+	}
+
+	public void testProcessFullySplitHeader() throws Exception {
+		MockControl control = MockControl.createControl(ParseStateContext.class);
+		control.setDefaultMatcher(MockControl.ARRAY_MATCHER);
+		ParseStateContext context = (ParseStateContext) control.getMock();
+
+		context.handleHeader(new String[] { "MSG", "0", "0", ".", "0", "100" });
+		control.replay();
+
+		Charset charset = Charset.forName("US-ASCII");
+
+		char[] toSplit = "MSG 0 0 . 0 100\r\n".toCharArray();
+
+		ParseState state = new HeaderState();
+
+		for (char ch : toSplit) {
+			ByteBuffer buffer = charset.encode(String.valueOf(ch));
+
+			assertFalse(state.process(buffer, context));
+			assertEquals(1, buffer.position());
+		}
+
+		control.verify();
+	}
+	
 }

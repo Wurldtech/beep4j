@@ -42,10 +42,10 @@ final class HeaderState implements ParseState {
 	
 	public boolean process(ByteBuffer buffer, ParseStateContext context) {
 		int position = buffer.position();
-		int index = findCRLF(buffer);
+		int index = findLF(buffer);
 		
 		if (index != NOT_FOUND) {
-			checkHeaderLength(index);
+			checkHeaderLength(tmp.position() + index - 1);
 			
 			int limit = buffer.limit();
 			buffer.limit(index + position);			
@@ -53,7 +53,18 @@ final class HeaderState implements ParseState {
 			buffer.limit(limit);
 			tmp.flip();
 			
-			buffer.position(buffer.position() + 2);
+			// Verify that the CR is present
+			tmp.position(tmp.limit() - 1);
+			if (tmp.get() != CR) {
+				throw new ProtocolException("found LF but missing CR in header");
+			}
+			tmp.rewind();
+			
+			// Rewind to before the CR
+			tmp.limit(tmp.limit() - 1);
+			
+			// Step past the LF
+			buffer.position(buffer.position() + 1);
 			
 			String[] tokens = tokenize(tmp);	
 			context.handleHeader(tokens);
@@ -63,7 +74,7 @@ final class HeaderState implements ParseState {
 			return buffer.hasRemaining();
 			
 		} else {
-			checkHeaderLength(buffer.remaining());
+			checkHeaderLength(tmp.position() + buffer.remaining() - 1);
 			tmp.put(buffer);
 			return false;
 		}
@@ -96,25 +107,21 @@ final class HeaderState implements ParseState {
 		return tmp;
 	}
 	
-	private int findCRLF(ByteBuffer buf) {
+	private int findLF(ByteBuffer buf) {
 		if (buf.hasRemaining()) {
 			buf.mark();
 			int remaining = buf.remaining();
-			
-			byte current = buf.get();
-		
-			for (int i = 0; i < remaining - 1; i++) {
-				byte next = buf.get();
-				if (current == CR && next == LF) {
+
+			for (int i = 0; i < remaining; i++) {
+				if (buf.get() == LF) {
 					buf.reset();
 					return i;
 				}
-				current = next;
 			}
-			
+
 			buf.reset();
 		}
-		
+
 		return NOT_FOUND;
 	}
 
