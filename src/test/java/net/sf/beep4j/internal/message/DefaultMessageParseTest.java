@@ -18,12 +18,14 @@ package net.sf.beep4j.internal.message;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 
 import junit.framework.TestCase;
 import net.sf.beep4j.Message;
+import net.sf.beep4j.MessageBuilder;
 
 public class DefaultMessageParseTest extends TestCase {
 	
@@ -57,7 +59,7 @@ public class DefaultMessageParseTest extends TestCase {
 		MessageParser parser = new DefaultMessageParser();
 		Message message = parser.parse(readMessage("greeting/l_greeting.txt"));
 		assertEquals("application/beep+xml", message.getContentType());
-		assertEquals("bar", message.getHeader("foo"));
+		assertEquals("bar", message.getHeader("Foo"));
 		String content = getContent(message);
 		assertEquals(MESSAGE_2, content);
 	}
@@ -70,6 +72,25 @@ public class DefaultMessageParseTest extends TestCase {
 		assertEquals(MESSAGE_3, content);
 	}
 	
+	public void testParseRoundTrip() throws Exception {
+		MessageBuilder messageBuilder = new DefaultMessageBuilder();
+		messageBuilder.addHeader("Foo", "  Bar  ");
+		messageBuilder.setCharsetName("UTF-8");
+		messageBuilder.setContentType("application", "beep+xml");
+
+		PrintWriter writer = new PrintWriter(messageBuilder.getWriter());
+		writer.print(MESSAGE_2);
+		writer.close();
+		
+		Message outMessage = messageBuilder.getMessage();
+		MessageParser parser = new DefaultMessageParser();
+		Message inMessage = parser.parse(outMessage.asByteBuffer());
+		assertEquals("application/beep+xml", inMessage.getContentType());
+		assertEquals("Bar", inMessage.getHeader("Foo"));
+		String content = getContent(inMessage);
+		assertEquals(MESSAGE_2, content);
+	}
+
 	private static final String MESSAGE_1 = "<greeting />\r\n";
 
 	private static final String MESSAGE_2 = "<greeting>\r\n"

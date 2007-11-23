@@ -49,10 +49,9 @@ public class MessageHeader {
 	}
 	
 	public void addHeader(String name, String value) {
-		name = name.toLowerCase();
-		if (Message.CONTENT_TYPE.equals(name)) {
+		if (Message.CONTENT_TYPE.equalsIgnoreCase(name)) {
 			parseContentType(value.trim());
-		} else if (Message.CONTENT_TRANSFER_ENCODING.equals(name)) {
+		} else if (Message.CONTENT_TRANSFER_ENCODING.equalsIgnoreCase(name)) {
 			parseContentTransferEncoding(value);
 		} else {
 			header.put(name, value.trim());
@@ -121,7 +120,7 @@ public class MessageHeader {
 	}
 	
 	public String getHeader(String name) {
-		return header.get(name.toLowerCase());
+		return header.get(name);
 	}
 	
 	public synchronized ByteBuffer asByteBuffer() {
@@ -147,7 +146,7 @@ public class MessageHeader {
 				String name = names.next();
 				String value = header.get(name);
 				builder.append(name);
-				builder.append("=");
+				builder.append(": ");
 				builder.append(value);
 				builder.append(EOL);
 			}
