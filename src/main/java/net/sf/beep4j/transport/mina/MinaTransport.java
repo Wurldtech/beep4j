@@ -42,43 +42,43 @@ public class MinaTransport extends IoHandlerAdapter implements Transport {
 	}
 	
 	public void sendBytes(java.nio.ByteBuffer buffer) {
-		LOG.info("send " + buffer.remaining() + " bytes");
+		LOG.debug("send " + buffer.remaining() + " bytes");
 		session.write(ByteBuffer.wrap(buffer));
 	}
 	
 	public void closeTransport() {
-		LOG.info("close transport");
+		LOG.debug("close transport");
 		session.close();
 	}
 	
 	@Override
 	public void sessionOpened(IoSession session) throws Exception {
-		LOG.info("transport session opened");
+		LOG.debug("transport session opened");
 		this.session = session;
 		context.connectionEstablished(session.getRemoteAddress());
 	}
 	
 	@Override
 	public void messageSent(IoSession session, Object message) throws Exception {
-		LOG.info("bytes sent on underlying transport");
+		LOG.debug("bytes sent on underlying transport");
 	}
 	
 	@Override
 	public void messageReceived(IoSession session, Object message) throws Exception {
 		ByteBuffer buffer = (ByteBuffer) message;
-		LOG.info("received " + buffer.remaining() + " bytes in transport layer");
+		LOG.debug("received " + buffer.remaining() + " bytes in transport layer");
 		context.messageReceived(buffer.buf());
 	}
 	
 	@Override
 	public void exceptionCaught(IoSession session, Throwable cause) throws Exception {
-		LOG.info("caugth exception", cause);
+		LOG.debug("caugth exception", cause);
 		context.exceptionCaught(cause);
 	}
 	
 	@Override
 	public void sessionClosed(IoSession session) throws Exception {
-		LOG.info("transport session closed by remote peer");
+		LOG.debug("transport session closed by remote peer");
 		context.connectionClosed();
 	}
 	

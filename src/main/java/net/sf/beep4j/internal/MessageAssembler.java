@@ -52,15 +52,15 @@ public class MessageAssembler implements FrameHandler {
 	// --> start of FrameHandler methods <--
 	
 	public void handleFrame(Frame frame) {
-		LOG.info("got frame: " + frame.getHeader());
+		LOG.debug("got frame: " + frame.getHeader());
 		
 		if (state == null) {
 			MessageType type = frame.getHeader().getType();
 			if (MessageType.ANS == type || MessageType.NUL == type) {
-				LOG.info("moving to ANS state");
+				LOG.debug("moving to ANS state");
 				state = new AnsState();
 			} else {
-				LOG.info("moving to normal state");
+				LOG.debug("moving to normal state");
 				state = new NormalState();
 			}
 		}
@@ -77,7 +77,7 @@ public class MessageAssembler implements FrameHandler {
 			throw new IllegalArgumentException("cannot create message from 0 fragments");
 		}
 		
-		LOG.info("creating message from " + frames.size() + " frames");
+		LOG.debug("creating message from " + frames.size() + " frames");
 		
 		int total = 0;
 		for (Frame frame : frames) {
@@ -89,7 +89,7 @@ public class MessageAssembler implements FrameHandler {
 			total += frame.getPayload().remaining();
 		}
 		
-		LOG.info("total payload size is " + total);
+		LOG.debug("total payload size is " + total);
 		
 		ByteBuffer buffer = ByteBuffer.allocate(total);
 		for (Frame frame : frames) {
@@ -147,7 +147,7 @@ public class MessageAssembler implements FrameHandler {
 			if (header.isIntermediate()) {
 				last = (DataHeader) frame.getHeader();
 			} else {
-				LOG.info("got complete message with " + fragments.size() + " fragments");
+				LOG.debug("got complete message with " + fragments.size() + " fragments");
 				last = null;
 				List<Frame> copy = new LinkedList<Frame>(fragments);
 				fragments.clear();

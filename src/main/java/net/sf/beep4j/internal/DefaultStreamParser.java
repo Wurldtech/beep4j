@@ -61,7 +61,7 @@ public class DefaultStreamParser implements StreamParser, ParseStateContext {
 	}
 		
 	public void handleHeader(String[] tokens) {
-		LOG.info("got header: " + Arrays.toString(tokens));
+		LOG.debug("got header: " + Arrays.toString(tokens));
 		
 		if (isStandardType(tokens[0])) {			
 			header = DataHeader.parseHeader(tokens);
@@ -71,7 +71,7 @@ public class DefaultStreamParser implements StreamParser, ParseStateContext {
 			long seqno = header.getSequenceNumber();
 			mapping.checkFrame(channel, seqno, size);
 			
-			LOG.info("moving to payload state");
+			LOG.debug("moving to payload state");
 			state = new PayloadState(header.getPayloadSize());
 			
 		} else {
@@ -88,13 +88,13 @@ public class DefaultStreamParser implements StreamParser, ParseStateContext {
 	}
 	
 	public void handlePayload(ByteBuffer payload) {
-		LOG.info("got payload, moving to trailer state");
+		LOG.debug("got payload, moving to trailer state");
 		this.payload = payload;
 		state = trailerState;
 	}
 	
 	public void handleTrailer() {
-		LOG.info("got trailer, moving to header state");
+		LOG.debug("got trailer, moving to header state");
 		Frame frame = new Frame(header, payload);
 		forward(frame);
 		header = null;

@@ -1,6 +1,4 @@
 
-- synchronization between IO thread and application thread(s)
-
 - introduce thread pool to provide inter channel asynchrony
   - receiving messages
     - channel receives messages synchronously

@@ -60,7 +60,7 @@ public class DefaultMessageParser implements MessageParser {
 			prev = current;
 		}
 		
-		LOG.info("message body starts at offset " + buffer.position());
+		LOG.debug("message body starts at offset " + buffer.position());
 		
 		ByteBuffer content = buffer.slice();
 		

@@ -60,13 +60,13 @@ public class DefaultChannelController implements ChannelController {
 	}
 	
 	public void updateSendWindow(long ackno, int size) {
-		LOG.info("update send window: ackno=" + ackno + ",window=" + size);
+		LOG.debug("update send window: ackno=" + ackno + ",window=" + size);
 		senderWindow.slide(ackno, size);
 		sendFrames(transport);
 	}
 	
 	public void sendANS(int messageNumber, int answerNumber, Message message) {
-		LOG.info("sendANS to message " + messageNumber + " with answer number " 
+		LOG.debug("sendANS to message " + messageNumber + " with answer number "
 				+ answerNumber + " on channel " + channel);
 		ByteBuffer buffer = message.asByteBuffer();
 		DataHeader header = new ANSHeader(
@@ -82,7 +82,7 @@ public class DefaultChannelController implements ChannelController {
 	}
 	
 	public void sendERR(int messageNumber, Message message) {
-		LOG.info("sendERR to message " + messageNumber + " on channel " + channel);
+		LOG.debug("sendERR to message " + messageNumber + " on channel " + channel);
 		ByteBuffer buffer = message.asByteBuffer();
 		DataHeader header = new DataHeader(
 				MessageType.ERR,
@@ -97,7 +97,7 @@ public class DefaultChannelController implements ChannelController {
 	}
 	
 	public void sendMSG(int messageNumber, Message message) {
-		LOG.info("sendMSG with message number " + messageNumber + " on channel " + channel);
+		LOG.debug("sendMSG with message number " + messageNumber + " on channel " + channel);
 		ByteBuffer buffer = message.asByteBuffer();
 		DataHeader header = new DataHeader(
 				MessageType.MSG,
@@ -112,7 +112,7 @@ public class DefaultChannelController implements ChannelController {
 	}
 	
 	public void sendNUL(int messageNumber) {
-		LOG.info("sendNUL to message " + messageNumber + " on channel " + channel);
+		LOG.debug("sendNUL to message " + messageNumber + " on channel " + channel);
 		DataHeader header = new DataHeader(
 				MessageType.NUL,
 				channel, messageNumber, false, 
@@ -124,7 +124,7 @@ public class DefaultChannelController implements ChannelController {
 	}
 	
 	public void sendRPY(int messageNumber, Message message) {
-		LOG.info("sendRPY to message " + messageNumber + " on channel " + channel);
+		LOG.debug("sendRPY to message " + messageNumber + " on channel " + channel);
 		ByteBuffer buffer = message.asByteBuffer();
 		DataHeader header = new DataHeader(
 				MessageType.RPY,
@@ -136,7 +136,7 @@ public class DefaultChannelController implements ChannelController {
 		Frame frame = new Frame(header, buffer);
 		enqueueFrame(frame);
 		int count = sendFrames(transport);
-		LOG.info("sendRPY caused " + count + " frames to be sent");
+		LOG.debug("sendRPY caused " + count + " frames to be sent");
 	}
 	
 	long id;
@@ -158,16 +158,16 @@ public class DefaultChannelController implements ChannelController {
 					+ "match expected sequence number " + window.getPosition());
 		}
 		
-		LOG.info("frameReceived on channel " + channel + ": seqno=" + seqno + ",size=" + size);
+		LOG.debug("frameReceived on channel " + channel + ": seqno=" + seqno + ",size=" + size);
 		window.moveBy(size);
-		LOG.info("receiver window = " + window);
+		LOG.debug("receiver window = " + window);
 		
 		if (window.remaining() <= 0.5 * window.getWindowSize()) {
 			long ackno = seqno + size;
 			int windowSize = window.getWindowSize();
 			window.slide(ackno, windowSize);
-			LOG.info("sending SEQ frame on channel " + channel + ": ackno=" + ackno + ",window=" + windowSize);
-			LOG.info("receiver window = " + window);
+			LOG.debug("sending SEQ frame on channel " + channel + ": ackno=" + ackno + ",window=" + windowSize);
+			LOG.debug("receiver window = " + window);
 			transport.sendBytes(createSEQFrame(channel, ackno, windowSize));
 		}
 	}
@@ -193,10 +193,10 @@ public class DefaultChannelController implements ChannelController {
 		Frame frame;
 		
 		while ((frame = nextFrame()) != null) {
-			LOG.info("send frame " + frame.getHeader());
+			LOG.debug("send frame " + frame.getHeader());
 			senderWindow.moveBy(frame.getSize());
 			frame.send(transport);
-			LOG.info("sender window = " + senderWindow);
+			LOG.debug("sender window = " + senderWindow);
 			count++;
 		}
 		
@@ -210,13 +210,13 @@ public class DefaultChannelController implements ChannelController {
 			Frame frame = frames.removeFirst();
 			
 			if (frame.getSize() <= senderWindow.remaining()) {
-				LOG.info("sending frame unchanged (channel=" + channel + ")");
+				LOG.debug("sending frame unchanged (channel=" + channel + ")");
 				if (frames.isEmpty()) {
-					LOG.info("sending last frame in buffer (channel=" + channel + ")");
+					LOG.debug("sending last frame in buffer (channel=" + channel + ")");
 				}
 				return frame;
 			} else if (senderWindow.remaining() >= MINIMUM_FRAME_SIZE) {
-				LOG.info("split frame at position " + senderWindow.remaining() 
+				LOG.debug("split frame at position " + senderWindow.remaining()
 						+ " (channel=" + channel + ")");
 				Frame[] split = frame.split(senderWindow.remaining());
 				frames.addFirst(split[1]);

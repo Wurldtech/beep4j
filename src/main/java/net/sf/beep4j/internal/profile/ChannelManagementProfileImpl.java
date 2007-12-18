@@ -98,7 +98,7 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 	
 	public void messageReceived(Message message, final ResponseHandler handler) {
 		ChannelManagementRequest r = parser.parseRequest(message);
-		LOG.info("received request of type " + r.getClass().getSimpleName());
+		LOG.debug("received request of type " + r.getClass().getSimpleName());
 		
 		if (r instanceof StartChannelMessage) {
 			StartChannelMessage request = (StartChannelMessage) r; 
@@ -106,11 +106,13 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 			
 			// validate start channel request
 			if (initiator && channelNumber % 2 != 0) {
-				LOG.info("number attribute in <start> element must be odd valued (was=" + channelNumber + ")");
+				LOG.info("received invalid start channel request: number attribute in <start> element must be " 
+						+ "odd valued (was=" + channelNumber + ")");
 				handler.sendERR(builder.createError(
 						createMessageBuilder(), 501, "number attribute in <start> element must be odd valued"));
 			} else if (!initiator && channelNumber % 2 != 1) {
-				LOG.info("number attribute in <start> element must be even valued (was=" + channelNumber + ")");
+				LOG.info("received invalid start channel request: number attribute in <start> element must be "
+						+ "even valued (was=" + channelNumber + ")");
 				handler.sendERR(builder.createError(
 						createMessageBuilder(), 501, "number attribute in <start> element must be even valued"));
 			} else {
@@ -125,7 +127,7 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 				LOG.info("session close requested");
 				manager.sessionCloseRequested(new CloseCallback() {
 					public void closeDeclined(int code, String message) {
-						LOG.info("close of session "  
+						LOG.info("close of session "
 								+ " declined by framework: "
 								+ code + ",'" + message + "'");
 						handler.sendERR(
@@ -133,7 +135,7 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 					}
 				
 					public void closeAccepted() {
-						LOG.info("close of session "  
+						LOG.info("close of session "
 								+ " accepted by framework");
 						handler.sendRPY(
 								builder.createOk(createMessageBuilder()));
@@ -144,13 +146,13 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 				LOG.info("close of channel " + request.getChannelNumber() + " requested");
 				manager.channelCloseRequested(request.getChannelNumber(), new CloseChannelRequest() {
 					public void reject() {
-						LOG.info("close of channel " + request.getChannelNumber() 
+						LOG.info("close of channel " + request.getChannelNumber()
 								+ " declined by application");
 						handler.sendERR(builder.createError(
 								createMessageBuilder(), 550, "still working"));
 					}
 					public void accept() {
-						LOG.info("close of channel " + request.getChannelNumber() 
+						LOG.info("close of channel " + request.getChannelNumber()
 								+ " accepted by application");
 						handler.sendRPY(builder.createOk(createMessageBuilder()));
 					}
@@ -167,13 +169,13 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 				request.getChannelNumber(), request.getProfiles());			
 		
 		if (response.isCancelled()) {
-			LOG.info("start channel request is cancelled by application: " 
+			LOG.info("start channel request is cancelled by application: "
 					+ response.getCode() + "," + response.getMessage());
 			handler.sendERR(builder.createError(
 					createMessageBuilder(), response.getCode(), response.getMessage()));
 			
 		} else {
-			LOG.info("start channel request is accepted by application: " 
+			LOG.info("start channel request is accepted by application: "
 					+ response.getProfile().getUri());
 			handler.sendRPY(builder.createProfile(
 					createMessageBuilder(), response.getProfile()));
