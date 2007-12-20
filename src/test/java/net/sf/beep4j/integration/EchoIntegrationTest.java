@@ -294,7 +294,9 @@ public class EchoIntegrationTest extends TestCase {
 		}
 		
 		public void closeAccepted() {
-			session.close();
+			if (semaphore.availablePermits() == -1) {
+				session.close();
+			}
 			semaphore.release();
 		}
 		

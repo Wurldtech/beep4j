@@ -107,15 +107,16 @@ public class SaxMessageParser implements ChannelManagementMessageParser {
 		}
 	}
 	
+	@SuppressWarnings("unchecked")
 	public ProfileInfo parseProfile(Message message) {
 		ElementHandlerContentHandler handler = new ElementHandlerContentHandler();
 		handler.registerHandler("/profile", new ProfileElementHandler(handler));
-		handler.pushObject(new LinkedList());
+		handler.pushObject(new LinkedList<ProfileInfo>());
 		try {
 			SAXParser parser = SAXParserFactory.newInstance().newSAXParser();
 			parser.parse(new InputSource(message.getReader()), handler);
-			List result = (List) handler.peekObject();
-			return (ProfileInfo) result.get(0);
+			List<ProfileInfo> result = (List) handler.peekObject();
+			return result.get(0);
 		} catch (Exception e) {
 			throw new InternalException(e);
 		}

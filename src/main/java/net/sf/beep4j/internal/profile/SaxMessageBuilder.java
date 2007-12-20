@@ -140,7 +140,7 @@ public final class SaxMessageBuilder implements ChannelManagementMessageBuilder 
 				writer.write(">");
 			}
 			writer.write("<" + name);
-			Iterator it = attributes.keySet().iterator();
+			Iterator<String> it = attributes.keySet().iterator();
 			while (it.hasNext()) {
 				String attributeName = (String) it.next();
 				writer.write(" " + attributeName);

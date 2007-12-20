@@ -74,7 +74,11 @@ public class MinaListener implements Listener {
 		@Override
 		public void exceptionCaught(IoSession session, Throwable cause) throws Exception {
 			MinaTransport transport = (MinaTransport) session.getAttribute(KEY);
-			transport.exceptionCaught(session, cause);
+			if (transport != null) {
+				transport.exceptionCaught(session, cause);
+			} else {
+				cause.printStackTrace();
+			}
 		}
 		
 		@Override

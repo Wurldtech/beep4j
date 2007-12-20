@@ -23,6 +23,8 @@ package net.sf.beep4j;
  */
 public class BeepException extends RuntimeException {
 
+	private static final long serialVersionUID = 7920530519303604907L;
+
 	public BeepException() {
 		super();
 	}

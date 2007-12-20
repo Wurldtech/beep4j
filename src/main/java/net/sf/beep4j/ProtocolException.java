@@ -17,6 +17,8 @@ package net.sf.beep4j;
 
 public class ProtocolException extends BeepException {
 	
+	private static final long serialVersionUID = -922866540191753742L;
+
 	public ProtocolException(String message, Throwable cause) {
 		super(message, cause);
 	}

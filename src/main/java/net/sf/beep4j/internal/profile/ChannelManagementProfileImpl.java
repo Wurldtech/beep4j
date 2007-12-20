@@ -98,7 +98,7 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 	
 	public void messageReceived(Message message, final ResponseHandler handler) {
 		ChannelManagementRequest r = parser.parseRequest(message);
-		LOG.debug("received request of type " + r.getClass().getSimpleName());
+		LOG.debug("received request " + r);
 		
 		if (r instanceof StartChannelMessage) {
 			StartChannelMessage request = (StartChannelMessage) r; 
@@ -106,12 +106,12 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 			
 			// validate start channel request
 			if (initiator && channelNumber % 2 != 0) {
-				LOG.info("received invalid start channel request: number attribute in <start> element must be " 
+				LOG.warn("received invalid start channel request: number attribute in <start> element must be " 
 						+ "odd valued (was=" + channelNumber + ")");
 				handler.sendERR(builder.createError(
 						createMessageBuilder(), 501, "number attribute in <start> element must be odd valued"));
 			} else if (!initiator && channelNumber % 2 != 1) {
-				LOG.info("received invalid start channel request: number attribute in <start> element must be "
+				LOG.warn("received invalid start channel request: number attribute in <start> element must be "
 						+ "even valued (was=" + channelNumber + ")");
 				handler.sendERR(builder.createError(
 						createMessageBuilder(), 501, "number attribute in <start> element must be even valued"));
@@ -122,23 +122,19 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 		} else if (r instanceof CloseChannelMessage) {
 			final CloseChannelMessage request = (CloseChannelMessage) r;
 			
-			// TODO: do we really need different behavior for channel 0?
 			if (request.getChannelNumber() == 0) {
 				LOG.info("session close requested");
 				manager.sessionCloseRequested(new CloseCallback() {
 					public void closeDeclined(int code, String message) {
-						LOG.info("close of session "
-								+ " declined by framework: "
+						LOG.info("close of session declined by framework: "
 								+ code + ",'" + message + "'");
 						handler.sendERR(
 								builder.createError(createMessageBuilder(), code, message));
 					}
 				
 					public void closeAccepted() {
-						LOG.info("close of session "
-								+ " accepted by framework");
-						handler.sendRPY(
-								builder.createOk(createMessageBuilder()));
+						LOG.info("close of session accepted by framework");
+						handler.sendRPY(builder.createOk(createMessageBuilder()));
 					}
 				});
 				

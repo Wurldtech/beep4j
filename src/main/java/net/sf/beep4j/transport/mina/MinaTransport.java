@@ -19,6 +19,8 @@ import net.sf.beep4j.SessionHandler;
 import net.sf.beep4j.internal.SessionImpl;
 import net.sf.beep4j.internal.TransportMapping;
 import net.sf.beep4j.internal.tcp.TCPMapping;
+import net.sf.beep4j.internal.util.HexDump;
+import net.sf.beep4j.transport.LoggingTransportContext;
 import net.sf.beep4j.transport.Transport;
 import net.sf.beep4j.transport.TransportContext;
 
@@ -28,9 +30,17 @@ import org.apache.mina.common.IoSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Transport implementation based on Apache MINA. See {@link http://mina.apache.org}
+ * for more information about MINA.
+ * 
+ * @author Simon Raess
+ */
 public class MinaTransport extends IoHandlerAdapter implements Transport {
 	
-	private static final Logger LOG = LoggerFactory.getLogger(MinaTransport.class);
+	private static final Logger DATA_LOG = LoggerFactory.getLogger("net.sf.beep4j.transport.DATA");
+	
+	private static final Logger LOG = LoggerFactory.getLogger("net.sf.beep4j.transport");
 	
 	private IoSession session;
 	
@@ -38,22 +48,31 @@ public class MinaTransport extends IoHandlerAdapter implements Transport {
 	
 	public MinaTransport(boolean initiator, SessionHandler sessionHandler) {
 		TransportMapping mapping = new TCPMapping(this);
-		context = new SessionImpl(initiator, sessionHandler, mapping);
+		context = new LoggingTransportContext(new SessionImpl(initiator, sessionHandler, mapping));
 	}
 	
 	public void sendBytes(java.nio.ByteBuffer buffer) {
-		LOG.debug("send " + buffer.remaining() + " bytes");
+		if (LOG.isDebugEnabled()) {
+			LOG.debug("sending " + buffer.remaining() + " bytes");
+		}
+		if (DATA_LOG.isDebugEnabled()) {
+			DATA_LOG.debug(HexDump.dump(buffer));
+		}
 		session.write(ByteBuffer.wrap(buffer));
 	}
 	
 	public void closeTransport() {
-		LOG.debug("close transport");
+		if (LOG.isDebugEnabled()) {
+			LOG.debug("close transport");
+		}
 		session.close();
 	}
 	
 	@Override
 	public void sessionOpened(IoSession session) throws Exception {
-		LOG.debug("transport session opened");
+		if (LOG.isDebugEnabled()) {
+			LOG.debug("transport session opened");
+		}
 		this.session = session;
 		context.connectionEstablished(session.getRemoteAddress());
 	}
@@ -66,19 +85,28 @@ public class MinaTransport extends IoHandlerAdapter implements Transport {
 	@Override
 	public void messageReceived(IoSession session, Object message) throws Exception {
 		ByteBuffer buffer = (ByteBuffer) message;
-		LOG.debug("received " + buffer.remaining() + " bytes in transport layer");
+		if (LOG.isDebugEnabled()) {
+			LOG.debug("received " + buffer.remaining() + " bytes");
+		}
+		if (DATA_LOG.isDebugEnabled()) {
+			DATA_LOG.debug(HexDump.dump(buffer.buf()));
+		}
 		context.messageReceived(buffer.buf());
 	}
 	
 	@Override
 	public void exceptionCaught(IoSession session, Throwable cause) throws Exception {
-		LOG.debug("caugth exception", cause);
+		if (LOG.isDebugEnabled()) {
+			LOG.debug("caugth exception", cause);
+		}
 		context.exceptionCaught(cause);
 	}
 	
 	@Override
 	public void sessionClosed(IoSession session) throws Exception {
-		LOG.debug("transport session closed by remote peer");
+		if (LOG.isDebugEnabled()) {
+			LOG.debug("transport session closed by remote peer");
+		}
 		context.connectionClosed();
 	}
 	

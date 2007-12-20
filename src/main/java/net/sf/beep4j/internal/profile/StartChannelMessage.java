@@ -15,6 +15,8 @@
  */
 package net.sf.beep4j.internal.profile;
 
+import java.util.Arrays;
+
 import net.sf.beep4j.ProfileInfo;
 
 final class StartChannelMessage implements ChannelManagementRequest {
@@ -34,6 +36,11 @@ final class StartChannelMessage implements ChannelManagementRequest {
 	
 	public ProfileInfo[] getProfiles() {
 		return profiles.clone();
+	}
+	
+	@Override
+	public String toString() {
+		return "StartChannelMessage[channel=" + channelNumber + ",profiles=" + Arrays.asList(profiles) + "]";
 	}
 	
 }

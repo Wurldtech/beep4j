@@ -40,5 +40,10 @@ final class CloseChannelMessage implements ChannelManagementRequest {
 	public String getDiagnostics() {
 		return diagnostics;
 	}
+	
+	@Override
+	public String toString() {
+		return "CloseChannelMessage[channel=" + channelNumber + ",code=" + code + ",diagnostics='" + diagnostics + "']";
+	}
 
 }

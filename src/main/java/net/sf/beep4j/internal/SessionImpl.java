@@ -15,8 +15,6 @@
  */
 package net.sf.beep4j.internal;
 
-import java.io.ByteArrayOutputStream;
-import java.io.UnsupportedEncodingException;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -169,6 +167,16 @@ public class SessionImpl
 		return builder.toString();
 	}
 	
+	private void debug(Object... messages) {
+		if (LOG.isDebugEnabled()) {
+			StringBuffer buffer = new StringBuffer();
+			for (Object message : messages) {
+				buffer.append(message);
+			}
+			LOG.debug(buffer.toString());
+		}
+	}
+	
 	private void info(String message) {
 		LOG.info(traceInfo() + message);
 	}
@@ -178,7 +186,7 @@ public class SessionImpl
 	}
 	
 	private void setCurrentState(SessionState currentState) {
-		info("setting session state from " + this.currentState + " to " + currentState);
+		debug("setting session state from ", this.currentState, " to ", currentState);
 		this.currentState = currentState;
 	}
 
@@ -452,28 +460,27 @@ public class SessionImpl
 	// --> start of MessageHandler methods <-- 
 
 	public synchronized void receiveMSG(int channelNumber, int messageNumber, Message message) {
-		info("received MSG: channel=" + channelNumber + ",message=" + messageNumber);
+		debug("received MSG: channel=", channelNumber, ",message=",  messageNumber);
 		getCurrentState().receiveMSG(channelNumber, messageNumber, message);
 	}
 
 	public synchronized void receiveANS(int channelNumber, int messageNumber, int answerNumber, Message message) {
-		info("received ANS: channel=" + channelNumber + ",message=" + messageNumber
-				 + ",answer=" + answerNumber);
+		debug("received ANS: channel=", channelNumber, ",message=", messageNumber, ",answer=", answerNumber);
 		getCurrentState().receiveANS(channelNumber, messageNumber, answerNumber, message);
 	}
 	
 	public synchronized void receiveNUL(int channelNumber, int messageNumber) {
-		info("received NUL: channel=" + channelNumber + ",message=" + messageNumber);
+		debug("received NUL: channel=", channelNumber, ",message=", messageNumber);
 		getCurrentState().receiveNUL(channelNumber, messageNumber);
 	}
 
 	public synchronized void receiveERR(int channelNumber, int messageNumber, Message message) {
-		info("received ERR: channel=" + channelNumber + ",message=" + messageNumber);
+		debug("received ERR: channel=", channelNumber, ",message=", messageNumber);
 		getCurrentState().receiveERR(channelNumber, messageNumber, message);
 	}
 		
 	public synchronized void receiveRPY(int channelNumber, int messageNumber, Message message) {
-		info("received RPY: channel=" + channelNumber + ",message=" + messageNumber);
+		debug("received RPY: channel=", channelNumber, ",message=", messageNumber);
 		getCurrentState().receiveRPY(channelNumber, messageNumber, message);
 	}
 	
@@ -488,7 +495,6 @@ public class SessionImpl
 	 * whether to accept the connection and sends the appropriate response.
 	 */
 	public synchronized void connectionEstablished(SocketAddress address) {
-		info("connection established to " + address);
 		getCurrentState().connectionEstablished(address);
 	}
 	
@@ -497,20 +503,7 @@ public class SessionImpl
 		LOG.warn("exception caught by transport", cause);
 	}
 	
-	public synchronized void messageReceived(ByteBuffer buffer) {
-		if (LOG.isDebugEnabled()) {
-			ByteArrayOutputStream stream = new ByteArrayOutputStream();
-			HexDump.dump(buffer, stream);
-			try {
-				info("received " + buffer.remaining() + " bytes");
-				LOG.debug(stream.toString("US-ASCII"));
-			} catch (UnsupportedEncodingException e) {
-				throw new InternalException(e);
-			}
-		} else if (LOG.isInfoEnabled()) {
-			info("received message with size " + buffer.remaining());
-		}
-		
+	public synchronized void messageReceived(ByteBuffer buffer) {		
 		try {
 			parser.process(buffer);
 		} catch (ProtocolException e) {
@@ -525,7 +518,6 @@ public class SessionImpl
 	}
 	
 	public synchronized void connectionClosed() {
-		info("underlying connection has been closed");
 		getCurrentState().connectionClosed();
 	}
 	
@@ -591,7 +583,7 @@ public class SessionImpl
 		public void receiveMSG(int channelNumber, int messageNumber, Message message) {
 			throw new IllegalStateException(
 					"internal error: unexpected method invocation in state <" + getName() + ">: "
-					+ "message NUL, channel=" + channelNumber + ",message=" + messageNumber);
+					+ "message MSG, channel=" + channelNumber + ",message=" + messageNumber);
 		}
 
 		public void receiveNUL(int channelNumber, int messageNumber) {
@@ -716,7 +708,7 @@ public class SessionImpl
 		@Override
 		public void sendMessage(int channelNumber, Message message, ReplyListener listener) {
 			int messageNumber = getNextMessageNumber(channelNumber);
-			info("send message: channel=" + channelNumber + ",message=" + messageNumber);
+			debug("send message: channel=", channelNumber, ",message=", messageNumber);
 			registerReplyListener(channelNumber, messageNumber, listener);
 			mapping.sendMSG(channelNumber, messageNumber, message);
 		}
@@ -725,16 +717,15 @@ public class SessionImpl
 		public StartChannelResponse channelStartRequested(int channelNumber, ProfileInfo[] profiles) {
 			validateChannelNumber(channelNumber);
 
-			info("start of channel " + channelNumber + " requested by remote peer: "
-					+ Arrays.toString(profiles));
+			debug("start of channel ", channelNumber, " requested by remote peer: ", Arrays.toString(profiles));
 			DefaultStartChannelRequest request = new DefaultStartChannelRequest(profiles);
 			sessionHandler.channelStartRequested(request);
 			
 			StartChannelResponse response = request.getResponse();
 			
 			if (response.isCancelled()) {
-				info("start of channel " + channelNumber + " is canelled by application: "
-						+ response.getCode() + ",'" + response.getMessage() + "'");
+				debug("start of channel ", channelNumber, " is cancelled by application: ", response.getCode(), 
+						",'", response.getMessage(), "'");
 				return response;
 			}
 			
@@ -743,8 +734,7 @@ public class SessionImpl
 				throw new ProtocolException("StartChannelRequest must be either cancelled or a profile must be selected");
 			}
 			
-			info("start of channel " + channelNumber + " is accepted by application: "
-					+ info.getUri());
+			debug("start of channel ", channelNumber, " is accepted by application: ", info.getUri());
 			
 			InternalChannel channel = createChannel(SessionImpl.this, info.getUri(), channelNumber);
 			ChannelHandler handler = channel.initChannel(response.getChannelHandler());
@@ -951,22 +941,21 @@ public class SessionImpl
 		public void sendANS(Message message) {
 			Assert.notNull("message", message);
 			checkCompletion();
-			info("sendANS on channel " + channel + " to message "
-					+ messageNumber + " (" + answerNumber + ")");
+			debug("sendANS on channel ", channel, " to message ", messageNumber, " (", answerNumber, ")");
 			mapping.sendANS(channel, messageNumber, answerNumber++, message);
 		}
 		
 		public void sendERR(Message message) {
 			Assert.notNull("message", message);
 			checkCompletion();
-			info("sendERR on channel " + channel + " to message " + messageNumber);
+			debug("sendERR on channel ", channel, " to message ", messageNumber);
 			mapping.sendERR(channel, messageNumber, message);
 			complete();
 		}
 		
 		public void sendNUL() {
 			checkCompletion();
-			info("sendNUL on channel " + channel + " to message " + messageNumber);
+			debug("sendNUL on channel ", channel, " to message ", messageNumber);
 			mapping.sendNUL(channel, messageNumber);
 			complete();
 		}
@@ -974,7 +963,7 @@ public class SessionImpl
 		public void sendRPY(Message message) {
 			Assert.notNull("message", message);
 			checkCompletion();
-			info("sendRPY on channel " + channel + " to message " + messageNumber);
+			debug("sendRPY on channel ", channel, " to message ", messageNumber);
 			mapping.sendRPY(channel, messageNumber, message);
 			complete();
 		}
