@@ -5,7 +5,7 @@
   <artifactId>beep4j</artifactId>
   <packaging>jar</packaging>
   <name>beep4j</name>
-  <version>0.1.1-SNAPSHOT</version>
+  <version>0.1.1</version>
   <description>
     beep4j is an opensource Java implementation of BEEP (RFC3080 and RFC3081).
   </description>
