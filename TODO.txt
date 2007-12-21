@@ -5,6 +5,21 @@
     the session monitor
   - this could lead to deadlock (depending on how the application is programmed)
 
+- ChannelFilter
+  - same as IoFilter in MINA
+  - filter methods on Channel as well as ChannelHandler
+  - allow implementation of cross-cutting concerns
+  
+- Channel
+  - add state to channel?
+  - Channel#setAttribute(name,value)
+
+- ChannelHandler
+  - messageReceived(msg:Object,handler:ResponseHandler)
+
+- logging
+  - add context: remote peer address, ...
+
 - introduce thread pool to provide inter channel asynchrony
   - receiving messages
     - channel receives messages synchronously
