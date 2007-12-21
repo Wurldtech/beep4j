@@ -1,4 +1,10 @@
 
+- synchronization
+  - currently, all external access to the session is synchronized
+  - however, beep4j calls application code (handlers) while still holding
+    the session monitor
+  - this could lead to deadlock (depending on how the application is programmed)
+
 - introduce thread pool to provide inter channel asynchrony
   - receiving messages
     - channel receives messages synchronously

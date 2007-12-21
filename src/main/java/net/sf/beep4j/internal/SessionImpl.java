@@ -44,7 +44,6 @@ import net.sf.beep4j.internal.profile.ChannelManagementProfileImpl;
 import net.sf.beep4j.internal.profile.Greeting;
 import net.sf.beep4j.internal.profile.StartChannelCallback;
 import net.sf.beep4j.internal.util.Assert;
-import net.sf.beep4j.internal.util.HexDump;
 import net.sf.beep4j.internal.util.IntegerSequence;
 import net.sf.beep4j.internal.util.Sequence;
 import net.sf.beep4j.transport.TransportContext;
@@ -864,7 +863,7 @@ public class SessionImpl
 		
 		@Override
 		public void sessionCloseRequested(CloseCallback callback) {
-			info("received session close request while close is already in progress");
+			debug("received session close request while close is already in progress");
 			try {
 				sessionHandler.sessionClosed();
 			} finally {
