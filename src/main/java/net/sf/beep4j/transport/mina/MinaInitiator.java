@@ -23,8 +23,8 @@ import net.sf.beep4j.internal.util.Assert;
 
 import org.apache.mina.common.IoConnector;
 
-public class MinaInitiator implements Initiator {
-
+public class MinaInitiator extends AbstractMinaPeer implements Initiator {
+	
 	private final IoConnector connector;
 	
 	public MinaInitiator(IoConnector connector) {
@@ -33,7 +33,7 @@ public class MinaInitiator implements Initiator {
 	}
 	
 	public void connect(SocketAddress address, SessionHandler handler) {
-		MinaTransport transport = new MinaTransport(true, handler);
+		MinaTransport transport = new MinaTransport(true, handler, filterChainBuilder);
 		connector.connect(address, transport);
 	}
 

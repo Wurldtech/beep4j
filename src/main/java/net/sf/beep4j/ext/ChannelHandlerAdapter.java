@@ -79,7 +79,7 @@ public abstract class ChannelHandlerAdapter implements ChannelHandler {
 	 * 
 	 * @param request the request to be declined or accepted
 	 */
-	public void closeRequested(CloseChannelRequest request) {
+	public void channelCloseRequested(CloseChannelRequest request) {
 		LOG.debug("close of channel requested: accepted");
 		request.accept();
 	}

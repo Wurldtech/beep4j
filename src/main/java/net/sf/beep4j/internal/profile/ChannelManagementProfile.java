@@ -21,7 +21,7 @@ import net.sf.beep4j.ChannelHandler;
 import net.sf.beep4j.CloseChannelCallback;
 import net.sf.beep4j.Message;
 import net.sf.beep4j.ProfileInfo;
-import net.sf.beep4j.ResponseHandler;
+import net.sf.beep4j.Reply;
 import net.sf.beep4j.SessionHandler;
 import net.sf.beep4j.internal.CloseCallback;
 import net.sf.beep4j.internal.SessionManager;
@@ -57,7 +57,7 @@ public interface ChannelManagementProfile {
 	 *              this method will drop the connection.
 	 */
 	boolean connectionEstablished(SocketAddress address, SessionHandler handler, 
-			ResponseHandler response);
+			Reply response);
 
 	/**
 	 * Invoked by the session when a greeting has been received during

@@ -25,8 +25,8 @@ import net.sf.beep4j.Message;
 import net.sf.beep4j.MessageBuilder;
 import net.sf.beep4j.ProfileInfo;
 import net.sf.beep4j.ProtocolException;
-import net.sf.beep4j.ReplyListener;
-import net.sf.beep4j.ResponseHandler;
+import net.sf.beep4j.ReplyHandler;
+import net.sf.beep4j.Reply;
 import net.sf.beep4j.SessionHandler;
 import net.sf.beep4j.internal.CloseCallback;
 import net.sf.beep4j.internal.DefaultStartSessionRequest;
@@ -96,7 +96,7 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 		this.channel = c;
 	}
 	
-	public void messageReceived(Message message, final ResponseHandler handler) {
+	public void messageReceived(Message message, final Reply handler) {
 		ChannelManagementRequest r = parser.parseRequest(message);
 		LOG.debug("received request " + r);
 		
@@ -160,7 +160,7 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 		}
 	}
 
-	private void handleStartChannelRequest(StartChannelMessage request, ResponseHandler handler) {
+	private void handleStartChannelRequest(StartChannelMessage request, Reply handler) {
 		StartChannelResponse response = manager.channelStartRequested(
 				request.getChannelNumber(), request.getProfiles());			
 		
@@ -178,7 +178,7 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 		}
 	}
 	
-	public void closeRequested(CloseChannelRequest request) {
+	public void channelCloseRequested(CloseChannelRequest request) {
 		throw new UnsupportedOperationException("unexpected code path");
 	}
 	
@@ -199,7 +199,7 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 	public boolean connectionEstablished(
 			SocketAddress address, 
 			SessionHandler sessionHandler, 
-			ResponseHandler response) {
+			Reply response) {
 		DefaultStartSessionRequest request = new DefaultStartSessionRequest(!initiator);
 		sessionHandler.connectionEstablished(request);
 		
@@ -230,23 +230,23 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 	
 	public void startChannel(int channelNumber, ProfileInfo[] infos, final StartChannelCallback callback) {
 		Message message = builder.createStart(createMessageBuilder(), channelNumber, infos);
-		channel.sendMessage(message, new ReplyListener() {
+		channel.sendMessage(message, new ReplyHandler() {
 		
-			public void receiveRPY(Message message) {
+			public void receivedRPY(Message message) {
 				ProfileInfo profile = parser.parseProfile(message);
 				callback.channelCreated(profile);
 			}
 		
-			public void receiveERR(Message message) {
+			public void receivedERR(Message message) {
 				BEEPError error = parser.parseError(message);
 				callback.channelFailed(error.getCode(), error.getMessage());
 			}
 		
-			public void receiveNUL() {
+			public void receivedNUL() {
 				throw new ProtocolException("message type NUL is not a valid response");		
 			}
 			
-			public void receiveANS(Message message) {
+			public void receivedANS(Message message) {
 				throw new ProtocolException("message type ANS is not a valid response");		
 			}
 		});
@@ -254,23 +254,23 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 	
 	public void closeChannel(int channelNumber, final CloseChannelCallback callback) {
 		Message message = builder.createClose(createMessageBuilder(), channelNumber, 200);
-		channel.sendMessage(message, new ReplyListener() {
+		channel.sendMessage(message, new ReplyHandler() {
 		
-			public void receiveRPY(Message message) {
+			public void receivedRPY(Message message) {
 				parser.parseOk(message);
 				callback.closeAccepted();
 			}
 		
-			public void receiveERR(Message message) {
+			public void receivedERR(Message message) {
 				BEEPError error = parser.parseError(message);
 				callback.closeDeclined(error.getCode(), error.getMessage());
 			}
 		
-			public void receiveANS(Message message) {
+			public void receivedANS(Message message) {
 				throw new UnsupportedOperationException();		
 			}
 			
-			public void receiveNUL() {
+			public void receivedNUL() {
 				throw new UnsupportedOperationException();		
 			}
 		
@@ -279,23 +279,23 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 	
 	public void closeSession(final CloseCallback callback) {
 		Message message = builder.createClose(createMessageBuilder(), 0, 200);
-		channel.sendMessage(message, new ReplyListener() {
+		channel.sendMessage(message, new ReplyHandler() {
 		
-			public void receiveRPY(Message message) {
+			public void receivedRPY(Message message) {
 				parser.parseOk(message);
 				callback.closeAccepted();
 			}
 		
-			public void receiveERR(Message message) {
+			public void receivedERR(Message message) {
 				BEEPError error = parser.parseError(message);
 				callback.closeDeclined(error.getCode(), error.getMessage());
 			}
 		
-			public void receiveANS(Message message) {
+			public void receivedANS(Message message) {
 				throw new ProtocolException("ANS message not valid response for close request");
 			}
 			
-			public void receiveNUL() {
+			public void receivedNUL() {
 				throw new ProtocolException("NUL message not valid response for close request");
 			}
 		

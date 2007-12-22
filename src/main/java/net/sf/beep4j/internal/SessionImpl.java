@@ -34,8 +34,8 @@ import net.sf.beep4j.Message;
 import net.sf.beep4j.MessageBuilder;
 import net.sf.beep4j.ProfileInfo;
 import net.sf.beep4j.ProtocolException;
-import net.sf.beep4j.ReplyListener;
-import net.sf.beep4j.ResponseHandler;
+import net.sf.beep4j.Reply;
+import net.sf.beep4j.ReplyHandler;
 import net.sf.beep4j.SessionHandler;
 import net.sf.beep4j.internal.message.DefaultMessageBuilder;
 import net.sf.beep4j.internal.profile.BEEPError;
@@ -74,7 +74,7 @@ public class SessionImpl
 	
 	private final Map<Integer,LinkedList<ReplyListenerHolder>> replyListeners = new HashMap<Integer,LinkedList<ReplyListenerHolder>>();
 	
-	private final Map<String,ResponseHandler> responseHandlers = new HashMap<String,ResponseHandler>();
+	private final Map<String,Reply> responseHandlers = new HashMap<String,Reply>();
 	
 	private final Map<Integer,Channel> channels = new HashMap<Integer,Channel>();
 	
@@ -114,6 +114,7 @@ public class SessionImpl
 		this.initiator = initiator;
 		this.sessionHandler = sessionHandler;
 		this.mapping = mapping;
+		
 		addSessionListener(mapping);
 		
 		DelegatingFrameHandler frameHandler = new DelegatingFrameHandler(this);
@@ -152,8 +153,8 @@ public class SessionImpl
 		return new ChannelImpl(session, profileUri, channelNumber);
 	}
 
-	protected ResponseHandler createResponseHandler(TransportMapping mapping, int channelNumber, int messageNumber) {
-		ResponseHandler responseHandler = new DefaultResponseHandler(mapping, channelNumber, messageNumber);
+	protected Reply createResponseHandler(TransportMapping mapping, int channelNumber, int messageNumber) {
+		Reply responseHandler = new DefaultResponseHandler(mapping, channelNumber, messageNumber);
 		setResponseHandler(channelNumber, messageNumber, responseHandler);
 		return responseHandler;
 	}
@@ -252,33 +253,33 @@ public class SessionImpl
 		fireChannelClosed(channelNumber);
 	}
 
-	private void registerReplyListener(int channelNumber, int messageNumber, ReplyListener listener) {
+	private void registerReplyListener(int channelNumber, int messageNumber, ReplyHandler listener) {
 		LinkedList<ReplyListenerHolder> expectedReplies = replyListeners.get(channelNumber);
 		expectedReplies.addLast(new ReplyListenerHolder(messageNumber, listener));
 	}
 	
 	private static class ReplyListenerHolder {
 		private final int messageNumber;
-		private final ReplyListener replyListener;
-		protected ReplyListenerHolder(int messageNumber, ReplyListener listener) {
+		private final ReplyHandler replyListener;
+		protected ReplyListenerHolder(int messageNumber, ReplyHandler listener) {
 			this.messageNumber = messageNumber;
 			this.replyListener = listener;
 		}
 		protected void receiveANS(int channelNumber, int messageNumber, Message message) {
 			validateMessageNumber(channelNumber, messageNumber);
-			replyListener.receiveANS(message);
+			replyListener.receivedANS(message);
 		}
 		protected void receiveNUL(int channelNumber, int messageNumber) {
 			validateMessageNumber(channelNumber, messageNumber);
-			replyListener.receiveNUL();
+			replyListener.receivedNUL();
 		}
 		protected void receiveERR(int channelNumber, int messageNumber, Message message) {
 			validateMessageNumber(channelNumber, messageNumber);
-			replyListener.receiveERR(message);
+			replyListener.receivedERR(message);
 		}
 		protected void receiveRPY(int channelNumber, int messageNumber, Message message) {
 			validateMessageNumber(channelNumber, messageNumber);
-			replyListener.receiveRPY(message);
+			replyListener.receivedRPY(message);
 		}
 		private void validateMessageNumber(int channelNumber, int messageNumber) {
 			if (this.messageNumber != messageNumber) {
@@ -317,12 +318,12 @@ public class SessionImpl
 		return listeners.getFirst();
 	}
 	
-	private ResponseHandler getResponseHandler(int channelNumber, int messageNumber) {
-		ResponseHandler handler = responseHandlers.get(key(channelNumber, messageNumber));
+	private Reply getResponseHandler(int channelNumber, int messageNumber) {
+		Reply handler = responseHandlers.get(key(channelNumber, messageNumber));
 		return handler;
 	}
 	
-	private void setResponseHandler(int channelNumber, int messageNumber, ResponseHandler responseHandler) {
+	private void setResponseHandler(int channelNumber, int messageNumber, Reply responseHandler) {
 		responseHandlers.put(key(channelNumber, messageNumber), responseHandler);
 	}
 	
@@ -387,7 +388,7 @@ public class SessionImpl
 	 * - register the reply listener under that number
 	 * - pass the message to the underlying transport mapping
 	 */	
-	public synchronized void sendMessage(int channelNumber, Message message, ReplyListener listener) {
+	public synchronized void sendMessage(int channelNumber, Message message, ReplyHandler listener) {
 		getCurrentState().sendMessage(channelNumber, message, listener);
 	}
 
@@ -438,7 +439,7 @@ public class SessionImpl
 	 */
 	public synchronized void channelCloseRequested(final int channelNumber, final CloseChannelRequest request) {
 		ChannelHandler handler = getChannelHandler(channelNumber);
-		handler.closeRequested(new CloseChannelRequest() {
+		handler.channelCloseRequested(new CloseChannelRequest() {
 			public void reject() {
 				request.reject();
 			}		
@@ -528,7 +529,7 @@ public class SessionImpl
 		
 		void startChannel(ProfileInfo[] profiles, ChannelHandlerFactory factory);
 		
-		void sendMessage(int channelNumber, Message message, ReplyListener listener);
+		void sendMessage(int channelNumber, Message message, ReplyHandler listener);
 		
 		StartChannelResponse channelStartRequested(int channelNumber, ProfileInfo[] profiles);
 		
@@ -554,7 +555,7 @@ public class SessionImpl
 					"cannot start channel in state <" + getName() + ">");
 		}
 		
-		public void sendMessage(int channelNumber, Message message, ReplyListener listener) {
+		public void sendMessage(int channelNumber, Message message, ReplyHandler listener) {
 			throw new IllegalStateException(
 					"cannot send messages in state <" + getName() + ">: channel="
 					+ channelNumber);
@@ -615,7 +616,7 @@ public class SessionImpl
 		}
 		
 		public void connectionEstablished(SocketAddress address) {
-			ResponseHandler responseHandler = new InitialResponseHandler(mapping);
+			Reply responseHandler = new InitialResponseHandler(mapping);
 			setResponseHandler(0, 0, responseHandler);
 			if (!channelManagementProfile.connectionEstablished(address, sessionHandler, responseHandler)) {
 				setCurrentState(deadState);
@@ -705,7 +706,7 @@ public class SessionImpl
 		}
 		
 		@Override
-		public void sendMessage(int channelNumber, Message message, ReplyListener listener) {
+		public void sendMessage(int channelNumber, Message message, ReplyHandler listener) {
 			int messageNumber = getNextMessageNumber(channelNumber);
 			debug("send message: channel=", channelNumber, ",message=", messageNumber);
 			registerReplyListener(channelNumber, messageNumber, listener);
@@ -745,7 +746,7 @@ public class SessionImpl
 		
 		@Override
 		public void receiveMSG(int channelNumber, int messageNumber, Message message) {
-			ResponseHandler responseHandler = getResponseHandler(channelNumber, messageNumber);
+			Reply responseHandler = getResponseHandler(channelNumber, messageNumber);
 			if (responseHandler != null) {
 				// Validation of frames according to the BEEP specification section 2.2.1.1.
 				//
@@ -903,7 +904,7 @@ public class SessionImpl
 				
 	}
 	
-	protected class DefaultResponseHandler implements ResponseHandler {
+	protected class DefaultResponseHandler implements Reply {
 		
 		private final TransportMapping mapping;
 		

@@ -15,25 +15,16 @@
  */
 package net.sf.beep4j;
 
-import java.io.IOException;
-import java.net.SocketAddress;
-
 /**
- * An interface whose implementations allow to listen for BEEP sessions.
- * 
  * @author Simon Raess
  */
-public interface Listener extends Peer {
+public interface Peer {
 	
 	/**
-	 * Binds the given SocketAddress. Whenever a new SessionHandler
-	 * is created with the SessionHandlerFactory whenever a new
-	 * session is created.
+	 * Sets the {@link ChannelFilterChainBuilder} used by this peer.
 	 * 
-	 * @param address the address
-	 * @param factory the factory used to create SessionHandlers
-	 * @throws IOException if binding the address fails
+	 * @param builder
 	 */
-	void bind(SocketAddress address, SessionHandlerFactory factory) throws IOException;
+	void setChannelFilterChainBuilder(ChannelFilterChainBuilder builder);
 	
 }

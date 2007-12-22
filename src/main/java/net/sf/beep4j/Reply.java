@@ -31,7 +31,7 @@ package net.sf.beep4j;
  * 
  * @author Simon Raess
  */
-public interface ResponseHandler {
+public interface Reply {
 	
 	/**
 	 * Creates a new MessageBuilder object that can be used to create

@@ -17,12 +17,12 @@ package net.sf.beep4j.internal;
 
 import net.sf.beep4j.CloseChannelCallback;
 import net.sf.beep4j.Message;
-import net.sf.beep4j.ReplyListener;
+import net.sf.beep4j.ReplyHandler;
 import net.sf.beep4j.Session;
 
 public interface InternalSession extends Session {
 	
-	void sendMessage(int channelNumber, Message message, ReplyListener listener);
+	void sendMessage(int channelNumber, Message message, ReplyHandler listener);
 	
 	void requestChannelClose(int channelNumber, final CloseChannelCallback callback);
 	

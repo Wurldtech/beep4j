@@ -27,8 +27,8 @@ import net.sf.beep4j.Message;
 import net.sf.beep4j.MessageBuilder;
 import net.sf.beep4j.ProfileInfo;
 import net.sf.beep4j.ProtocolException;
-import net.sf.beep4j.ReplyListener;
-import net.sf.beep4j.ResponseHandler;
+import net.sf.beep4j.ReplyHandler;
+import net.sf.beep4j.Reply;
 import net.sf.beep4j.SessionHandler;
 import net.sf.beep4j.StartChannelRequest;
 import net.sf.beep4j.StartSessionRequest;
@@ -392,7 +392,7 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 		Message request = createCloseMessage(1);		
 		Message reply = createOkMessage();
 		
-		channel.channelHandlerMock.expects(once()).method("closeRequested")
+		channel.channelHandlerMock.expects(once()).method("channelCloseRequested")
 				.with(ANYTHING).will(closeChannelAcceptor);
 		channel.channelHandlerMock.expects(once()).method("channelClosed");
 		transportMappingMock.expects(once()).method("sendRPY")
@@ -432,8 +432,8 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 	}
 	
 	private Mock sendEcho(Channel channel, int channelNumber, int messageNumber, String content) throws IOException {
-		Mock replyListenerMock = mock(ReplyListener.class);
-		ReplyListener replyListener = (ReplyListener) replyListenerMock.proxy();
+		Mock replyListenerMock = mock(ReplyHandler.class);
+		ReplyHandler replyListener = (ReplyHandler) replyListenerMock.proxy();
 		
 		Message request = createEchoMessage(content);		
 		transportMappingMock.expects(once()).method("sendMSG")
@@ -445,7 +445,7 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 	
 	private void receiveEcho(MessageHandler messageHandler, Mock listenerMock, int channelNumber, int messageNumber, String content) throws IOException {
 		Message reply = createEchoMessage(content);
-		listenerMock.expects(once()).method("receiveRPY").with(same(reply));
+		listenerMock.expects(once()).method("receivedRPY").with(same(reply));
 		messageHandler.receiveRPY(channelNumber, messageNumber, reply);
 	}
 	
@@ -457,8 +457,8 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 	
 	private void receiveAndReplyEcho(MessageHandler messageHandler, ChannelStruct channel,
 			int channelNumber, int messageNumber, String content) throws IOException {
-		ParameterCaptureStub<ResponseHandler> extractor = 
-				new ParameterCaptureStub<ResponseHandler>(1, ResponseHandler.class, null);
+		ParameterCaptureStub<Reply> extractor = 
+				new ParameterCaptureStub<Reply>(1, Reply.class, null);
 		
 		Message request = createEchoMessage(content);
 		Message reply = createEchoMessage(content);
@@ -468,7 +468,7 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 		
 		messageHandler.receiveMSG(channelNumber, messageNumber, request);
 		
-		ResponseHandler responseHandler = extractor.getParameter();		
+		Reply responseHandler = extractor.getParameter();		
 		transportMappingMock.expects(once()).method("sendRPY").with(eq(channelNumber), eq(messageNumber), same(reply));
 		responseHandler.sendRPY(reply);
 	}

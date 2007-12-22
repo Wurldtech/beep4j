@@ -25,13 +25,13 @@ package net.sf.beep4j;
 public interface ChannelFilter {
 	
 	/**
-	 * Filters {@link Channel#sendMessage(Message, ReplyListener)}.
+	 * Filters {@link Channel#sendMessage(Message, ReplyHandler)}.
 	 * 
 	 * @param next the next filter in the chain
 	 * @param message the message that is to be sent
 	 * @param listener the listener that processes the reply for this message
 	 */
-	void filterSendMessage(NextFilter next, Object message, ReplyListener listener);
+	void filterSendMessage(NextFilter next, Object message, ReplyHandler listener);
 	
 	/**
 	 * Filters {@link Channel#close(CloseChannelCallback)}.
@@ -49,16 +49,16 @@ public interface ChannelFilter {
 	void filterChannelOpened(NextFilter next, Channel channel);
 	
 	/**
-	 * Filters {@link ChannelHandler#messageReceived(Message, ResponseHandler)}.
+	 * Filters {@link ChannelHandler#messageReceived(Message, Reply)}.
 	 * 
 	 * @param next the next filter in the chain
 	 * @param message the message that is received
 	 * @param responseHandler to be used to create the response for the received message
 	 */
-	void filterMessageReceived(NextFilter next, Message message, ResponseHandler responseHandler);
+	void filterMessageReceived(NextFilter next, Message message, Reply responseHandler);
 	
 	/**
-	 * Filters {@link ChannelHandler#closeRequested(CloseChannelRequest)}.
+	 * Filters {@link ChannelHandler#channelCloseRequested(CloseChannelRequest)}.
 	 * 
 	 * @param next the next filter in the chain
 	 * @param request the close channel request
@@ -72,11 +72,22 @@ public interface ChannelFilter {
 	 */
 	void filterChannelClosed(NextFilter next);
 	
+	/**
+	 * Interface of the next filter in the chain.
+	 */
 	interface NextFilter { 
 		
-		void filterSendMessage(Message message, ReplyListener listener);
+		void filterSendMessage(Message message, ReplyHandler listener);
 		
 		void filterClose(CloseChannelCallback callback);
+		
+		void filterChannelOpened(Channel channel);
+		
+		void filterMessageReceived(Message message, Reply reply);
+		
+		void filterChannelCloseReqested(CloseChannelRequest request);
+		
+		void filterChannelClosed();
 		
 	}
 	

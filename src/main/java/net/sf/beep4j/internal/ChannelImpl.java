@@ -21,8 +21,8 @@ import net.sf.beep4j.CloseChannelCallback;
 import net.sf.beep4j.CloseChannelRequest;
 import net.sf.beep4j.Message;
 import net.sf.beep4j.MessageBuilder;
-import net.sf.beep4j.ReplyListener;
-import net.sf.beep4j.ResponseHandler;
+import net.sf.beep4j.Reply;
+import net.sf.beep4j.ReplyHandler;
 import net.sf.beep4j.Session;
 import net.sf.beep4j.internal.message.DefaultMessageBuilder;
 import net.sf.beep4j.internal.util.Assert;
@@ -95,7 +95,7 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 		this.state.checkCondition();
 	}
 	
-	public void sendMessage(final Message message, final ReplyListener listener) {
+	public void sendMessage(final Message message, final ReplyHandler listener) {
 		Assert.notNull("message", message);
 		Assert.notNull("listener", listener);
 		state.sendMessage(message, new ReplyListenerWrapper(listener));
@@ -118,11 +118,11 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 		channelHandler.channelOpened(this);		
 	}
 	
-	public void messageReceived(Message message, ResponseHandler handler) {
+	public void messageReceived(Message message, Reply handler) {
 		state.messageReceived(message, new ResponseHandlerWrapper(handler));		
 	}
 	
-	public void closeRequested(CloseChannelRequest request) {
+	public void channelCloseRequested(CloseChannelRequest request) {
 		state.closeRequested(request);
 	}
 	
@@ -160,40 +160,40 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 	 * Wrapper for ReplyListener that decrements a counter whenever
 	 * a complete message has been received.
 	 */
-	private class ReplyListenerWrapper implements ReplyListener {
+	private class ReplyListenerWrapper implements ReplyHandler {
 
-		private final ReplyListener target;
+		private final ReplyHandler target;
 		
-		private ReplyListenerWrapper(ReplyListener target) {
+		private ReplyListenerWrapper(ReplyHandler target) {
 			this.target = target;
 			incrementOutstandingReplyCount();
 		}
 		
-		public void receiveANS(Message message) {
-			target.receiveANS(message);			
+		public void receivedANS(Message message) {
+			target.receivedANS(message);			
 		}
 		
-		public void receiveNUL() {
+		public void receivedNUL() {
 			decrementOutstandingReplyCount();
-			target.receiveNUL();
+			target.receivedNUL();
 		}
 		
-		public void receiveERR(Message message) {
+		public void receivedERR(Message message) {
 			decrementOutstandingReplyCount();
-			target.receiveERR(message);
+			target.receivedERR(message);
 		}
 		
-		public void receiveRPY(Message message) {
+		public void receivedRPY(Message message) {
 			decrementOutstandingReplyCount();
-			target.receiveRPY(message);
+			target.receivedRPY(message);
 		}
 	}
 	
-	private class ResponseHandlerWrapper implements ResponseHandler {
+	private class ResponseHandlerWrapper implements Reply {
 		
-		private final ResponseHandler target;
+		private final Reply target;
 		
-		private ResponseHandlerWrapper(ResponseHandler target) {
+		private ResponseHandlerWrapper(Reply target) {
 			this.target = target;
 			incrementOutstandingResponseCount();
 		}
@@ -226,13 +226,13 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 		
 		void checkCondition();
 		
-		void sendMessage(Message message, ReplyListener listener);
+		void sendMessage(Message message, ReplyHandler listener);
 		
 		void closeInitiated(CloseChannelCallback callback);
 		
 		void closeRequested(CloseChannelRequest request);
 		
-		void messageReceived(Message message, ResponseHandler handler);
+		void messageReceived(Message message, Reply handler);
 		
 	}
 	
@@ -242,7 +242,7 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 			// nothing to check
 		}
 		
-		public void sendMessage(Message message, ReplyListener listener) {
+		public void sendMessage(Message message, ReplyHandler listener) {
 			throw new IllegalStateException();
 		}
 		
@@ -254,7 +254,7 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 			throw new IllegalStateException();
 		}
 		
-		public void messageReceived(Message message, ResponseHandler handler) {
+		public void messageReceived(Message message, Reply handler) {
 			throw new IllegalStateException();
 		}
 	}
@@ -262,12 +262,12 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 	private class Alive extends AbstractState {
 		
 		@Override
-		public void sendMessage(Message message, ReplyListener listener) {
+		public void sendMessage(final Message message, final ReplyHandler listener) {
 			session.sendMessage(channelNumber, message, listener);
 		}
 		
 		@Override
-		public void messageReceived(Message message, ResponseHandler handler) {
+		public void messageReceived(Message message, Reply handler) {
 			channelHandler.messageReceived(message, handler);
 		}
 		
@@ -293,7 +293,7 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 		}
 		
 		@Override
-		public void messageReceived(Message message, ResponseHandler handler) {
+		public void messageReceived(Message message, Reply handler) {
 			channelHandler.messageReceived(message, handler);
 		}
 		
@@ -342,14 +342,14 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 		}
 		
 		@Override
-		public void messageReceived(Message message, ResponseHandler handler) {
+		public void messageReceived(Message message, Reply handler) {
 			channelHandler.messageReceived(message, handler);
 		}
 		
 		@Override
 		public void checkCondition() {
 			if (isReadyToShutdown()) {
-				channelHandler.closeRequested(new CloseChannelRequest() {
+				channelHandler.channelCloseRequested(new CloseChannelRequest() {
 					public void reject() {
 						setState(new Alive());
 						request.reject();

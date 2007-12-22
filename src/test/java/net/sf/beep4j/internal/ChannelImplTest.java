@@ -21,7 +21,7 @@ import net.sf.beep4j.CloseChannelRequest;
 import net.sf.beep4j.Message;
 import net.sf.beep4j.MessageStub;
 import net.sf.beep4j.NullReplyListener;
-import net.sf.beep4j.ReplyListener;
+import net.sf.beep4j.ReplyHandler;
 
 import org.jmock.Mock;
 import org.jmock.MockObjectTestCase;
@@ -116,8 +116,8 @@ public class ChannelImplTest extends MockObjectTestCase {
 		
 		// define expectations
 		// TODO setup ordering constraints
-		ParameterCaptureStub<ReplyListener> capture = 
-			new ParameterCaptureStub<ReplyListener>(2, ReplyListener.class, null);
+		ParameterCaptureStub<ReplyHandler> capture = 
+			new ParameterCaptureStub<ReplyHandler>(2, ReplyHandler.class, null);
 		
 		sessionMock.expects(once()).method("sendMessage")
 				.with(eq(1), same(message), ANYTHING)
@@ -136,8 +136,8 @@ public class ChannelImplTest extends MockObjectTestCase {
 		channel.close(callback);
 		assertIsShuttingDown(channel);
 		
-		ReplyListener listener = capture.getParameter();
-		listener.receiveNUL();
+		ReplyHandler listener = capture.getParameter();
+		listener.receivedNUL();
 		assertIsDead(channel);
 	}
 	
@@ -174,8 +174,8 @@ public class ChannelImplTest extends MockObjectTestCase {
 		
 		// define expectations
 		// TODO: define ordering constraints
-		ParameterCaptureStub<ReplyListener> capture = 
-			new ParameterCaptureStub<ReplyListener>(2, ReplyListener.class, null);
+		ParameterCaptureStub<ReplyHandler> capture = 
+			new ParameterCaptureStub<ReplyHandler>(2, ReplyHandler.class, null);
 		
 		sessionMock.expects(once()).method("sendMessage")
 				.with(eq(1), same(m1), ANYTHING)
@@ -196,8 +196,8 @@ public class ChannelImplTest extends MockObjectTestCase {
 		channel.close(callback);
 		assertIsShuttingDown(channel);
 		
-		ReplyListener listener = capture.getParameter();
-		listener.receiveNUL();
+		ReplyHandler listener = capture.getParameter();
+		listener.receivedNUL();
 		assertIsAlive(channel);
 		
 		channel.sendMessage(m2, new NullReplyListener());
@@ -208,8 +208,7 @@ public class ChannelImplTest extends MockObjectTestCase {
 		ChannelHandler handler = channel.initChannel(channelHandler);
 		
 		// define expectations
-		// TODO: define ordering constraints
-		channelHandlerMock.expects(once()).method("closeRequested")
+		channelHandlerMock.expects(once()).method("channelCloseRequested")
 				.with(ANYTHING)
 				.will(new CloseAcceptingRequest(0));
 		
@@ -220,7 +219,7 @@ public class ChannelImplTest extends MockObjectTestCase {
 		CloseChannelRequest request = (CloseChannelRequest) mock.proxy();
 		
 		// test
-		handler.closeRequested(request);
+		handler.channelCloseRequested(request);
 		assertIsDead(channel);
 	}
 	
@@ -230,16 +229,15 @@ public class ChannelImplTest extends MockObjectTestCase {
 		
 		Message message = new MessageStub();
 		
-		ParameterCaptureStub<ReplyListener> capture =
-			new ParameterCaptureStub<ReplyListener>(2, ReplyListener.class, null);
+		ParameterCaptureStub<ReplyHandler> capture =
+			new ParameterCaptureStub<ReplyHandler>(2, ReplyHandler.class, null);
 		
 		// define expectations
-		// TODO: define ordering constraints
 		sessionMock.expects(once()).method("sendMessage")
 				.with(eq(1), same(message), ANYTHING)
 				.will(capture);
 		
-		channelHandlerMock.expects(once()).method("closeRequested")
+		channelHandlerMock.expects(once()).method("channelCloseRequested")
 				.with(ANYTHING)
 				.will(new CloseAcceptingRequest(0));
 		
@@ -251,11 +249,11 @@ public class ChannelImplTest extends MockObjectTestCase {
 
 		// test
 		channel.sendMessage(message, new NullReplyListener());
-		handler.closeRequested(request);
+		handler.channelCloseRequested(request);
 		assertIsShuttingDown(channel);
 		
-		ReplyListener listener = capture.getParameter();
-		listener.receiveNUL();
+		ReplyHandler listener = capture.getParameter();
+		listener.receivedNUL();
 		assertIsDead(channel);
 	}
 	
@@ -264,8 +262,7 @@ public class ChannelImplTest extends MockObjectTestCase {
 		ChannelHandler handler = channel.initChannel(channelHandler);
 		
 		// define expectations
-		// TODO: define ordering constraints
-		channelHandlerMock.expects(once()).method("closeRequested")
+		channelHandlerMock.expects(once()).method("channelCloseRequested")
 				.with(ANYTHING)
 				.will(new CloseRejectingRequest(0));
 		
@@ -274,7 +271,7 @@ public class ChannelImplTest extends MockObjectTestCase {
 		CloseChannelRequest request = (CloseChannelRequest) mock.proxy();
 		
 		// test
-		handler.closeRequested(request);
+		handler.channelCloseRequested(request);
 		assertIsAlive(channel);
 	}
 	
@@ -285,16 +282,15 @@ public class ChannelImplTest extends MockObjectTestCase {
 		Message m1 = new MessageStub();
 		Message m2 = new MessageStub();
 		
-		ParameterCaptureStub<ReplyListener> capture =
-			new ParameterCaptureStub<ReplyListener>(2, ReplyListener.class, null);
+		ParameterCaptureStub<ReplyHandler> capture =
+			new ParameterCaptureStub<ReplyHandler>(2, ReplyHandler.class, null);
 		
 		// define expectations
-		// TODO: define ordering constraints
 		sessionMock.expects(once()).method("sendMessage")
 				.with(eq(1), same(m1), ANYTHING)
 				.will(capture);
 		
-		channelHandlerMock.expects(once()).method("closeRequested")
+		channelHandlerMock.expects(once()).method("channelCloseRequested")
 				.with(ANYTHING)
 				.will(new CloseRejectingRequest(0));
 		
@@ -307,11 +303,11 @@ public class ChannelImplTest extends MockObjectTestCase {
 
 		// test
 		channel.sendMessage(m1, new NullReplyListener());
-		handler.closeRequested(request);
+		handler.channelCloseRequested(request);
 		assertIsShuttingDown(channel);
 		
-		ReplyListener listener = capture.getParameter();
-		listener.receiveNUL();
+		ReplyHandler listener = capture.getParameter();
+		listener.receivedNUL();
 		assertIsAlive(channel);
 		
 		channel.sendMessage(m2, new NullReplyListener());

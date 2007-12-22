@@ -25,7 +25,7 @@ import java.net.SocketAddress;
  * 
  * @author Simon Raess
  */
-public interface Initiator {
+public interface Initiator extends Peer {
 	
 	/**
 	 * Tries to establish a session to the peer specified by the given

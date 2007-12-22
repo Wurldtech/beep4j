@@ -13,24 +13,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j;
+package net.sf.beep4j.transport.mina;
 
-public class NullReplyListener implements ReplyHandler {
+import net.sf.beep4j.ChannelFilterChainBuilder;
+import net.sf.beep4j.Peer;
 
-	public void receivedANS(Message message) {
+public abstract class AbstractMinaPeer implements Peer {
 
-	}
+	protected ChannelFilterChainBuilder filterChainBuilder;
 
-	public void receivedERR(Message message) {
-
-	}
-
-	public void receivedNUL() {
-
-	}
-
-	public void receivedRPY(Message message) {
-
+	public void setChannelFilterChainBuilder(ChannelFilterChainBuilder builder) {
+		filterChainBuilder = builder;
 	}
 
 }

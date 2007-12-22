@@ -15,6 +15,7 @@
  */
 package net.sf.beep4j.transport.mina;
 
+import net.sf.beep4j.ChannelFilterChainBuilder;
 import net.sf.beep4j.SessionHandler;
 import net.sf.beep4j.internal.SessionImpl;
 import net.sf.beep4j.internal.TransportMapping;
@@ -46,7 +47,7 @@ public class MinaTransport extends IoHandlerAdapter implements Transport {
 	
 	private TransportContext context;
 	
-	public MinaTransport(boolean initiator, SessionHandler sessionHandler) {
+	public MinaTransport(boolean initiator, SessionHandler sessionHandler, ChannelFilterChainBuilder builder) {
 		TransportMapping mapping = new TCPMapping(this);
 		context = new LoggingTransportContext(new SessionImpl(initiator, sessionHandler, mapping));
 	}

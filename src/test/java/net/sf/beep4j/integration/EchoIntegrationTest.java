@@ -31,8 +31,8 @@ import net.sf.beep4j.Initiator;
 import net.sf.beep4j.Message;
 import net.sf.beep4j.MessageBuilder;
 import net.sf.beep4j.ProfileInfo;
-import net.sf.beep4j.ReplyListener;
-import net.sf.beep4j.ResponseHandler;
+import net.sf.beep4j.ReplyHandler;
+import net.sf.beep4j.Reply;
 import net.sf.beep4j.Session;
 import net.sf.beep4j.SessionHandler;
 import net.sf.beep4j.SessionHandlerFactory;
@@ -221,13 +221,13 @@ public class EchoIntegrationTest extends TestCase {
 			}
 		}
 		
-		public void messageReceived(Message message, ResponseHandler handler) {
+		public void messageReceived(Message message, Reply handler) {
 			throw new UnsupportedOperationException();
 		}
 		
 	}
 	
-	protected class EchoListener implements ReplyListener {
+	protected class EchoListener implements ReplyHandler {
 		private final Channel channel;
 		private final Semaphore semaphore;
 		private final StringBuilder builder;
@@ -243,21 +243,21 @@ public class EchoIntegrationTest extends TestCase {
 			return actual;
 		}
 		
-		public void receiveANS(Message message) {
+		public void receivedANS(Message message) {
 			String str = toString(message);
 			builder.append(str);
 		}
 		
-		public void receiveERR(Message message) {
+		public void receivedERR(Message message) {
 			throw new UnsupportedOperationException();
 		}
 		
-		public void receiveNUL() {
+		public void receivedNUL() {
 			verify();
 			channel.close(new PrintingCloseCallback(channel.getSession(), semaphore));
 		}
 		
-		public void receiveRPY(Message message) {
+		public void receivedRPY(Message message) {
 			builder.append(toString(message));
 			verify();
 			channel.close(new PrintingCloseCallback(channel.getSession(), semaphore));
@@ -294,7 +294,7 @@ public class EchoIntegrationTest extends TestCase {
 		}
 		
 		public void closeAccepted() {
-			if (semaphore.availablePermits() == -1) {
+			if (semaphore.availablePermits() >= -1) {
 				session.close();
 			}
 			semaphore.release();

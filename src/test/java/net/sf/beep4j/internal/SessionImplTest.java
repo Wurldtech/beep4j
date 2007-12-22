@@ -19,7 +19,7 @@ import net.sf.beep4j.ChannelHandler;
 import net.sf.beep4j.Message;
 import net.sf.beep4j.MessageStub;
 import net.sf.beep4j.NullCloseChannelCallback;
-import net.sf.beep4j.ReplyListener;
+import net.sf.beep4j.ReplyHandler;
 import net.sf.beep4j.SessionHandler;
 import net.sf.beep4j.internal.profile.BEEPError;
 import net.sf.beep4j.internal.profile.ChannelManagementProfile;
@@ -163,8 +163,8 @@ public class SessionImplTest extends MockObjectTestCase {
 		final ChannelManagementProfile profile = (ChannelManagementProfile) profileMock.proxy(); 
 		Mock channelHandlerMock = mock(ChannelHandler.class);
 		ChannelHandler channelHandler = (ChannelHandler) channelHandlerMock.proxy();
-		Mock replyListenerMock = mock(ReplyListener.class);
-		ReplyListener replyListener = (ReplyListener) replyListenerMock.proxy();
+		Mock replyListenerMock = mock(ReplyHandler.class);
+		ReplyHandler replyListener = (ReplyHandler) replyListenerMock.proxy();
 		
 		Message greeting = new MessageStub();
 		Message message = new MessageStub();
@@ -180,7 +180,7 @@ public class SessionImplTest extends MockObjectTestCase {
 				.will(returnValue(new Greeting(new String[0], new String[0], new String[] { "abc" })));
 
 		mappingMock.expects(once()).method("sendMSG").with(eq(0), eq(1), same(message));
-		replyListenerMock.expects(once()).method("receiveRPY").with(same(reply));
+		replyListenerMock.expects(once()).method("receivedRPY").with(same(reply));
 
 		// test
 		SessionImpl session = new SessionImpl(false, sessionHandler, mapping) {
