@@ -23,7 +23,7 @@ package net.sf.beep4j;
  * 
  * @author Simon Raess
  */
-public interface ReplyListener {
+public interface ReplyHandler {
 	
 	/**
 	 * Invoked when an ANS response is received. For a one-to-many
@@ -31,7 +31,7 @@ public interface ReplyListener {
 	 * 
 	 * @param message the received message
 	 */
-	void receiveANS(Message message);
+	void receivedANS(Message message);
 	
 	/**
 	 * Invoked when a NUL response is received. For a one-to-many
@@ -39,7 +39,7 @@ public interface ReplyListener {
 	 * No further methods must be invoked on the listener after 
 	 * this method has been invoked.
 	 */
-	void receiveNUL();
+	void receivedNUL();
 	
 	/**
 	 * Invoked when an ERR response is received. This type of response
@@ -47,7 +47,7 @@ public interface ReplyListener {
 	 * 
 	 * @param message the received message
 	 */
-	void receiveERR(Message message);
+	void receivedERR(Message message);
 	
 	/**
 	 * Invoked when a RPY response is received. This type of response
@@ -55,6 +55,6 @@ public interface ReplyListener {
 	 * 
 	 * @param message the received message
 	 */
-	void receiveRPY(Message message);
+	void receivedRPY(Message message);
 	
 }

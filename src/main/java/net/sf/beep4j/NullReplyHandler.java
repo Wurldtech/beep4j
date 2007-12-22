@@ -15,7 +15,7 @@
  */
 package net.sf.beep4j;
 
-public class NullReplyListener implements ReplyHandler {
+public class NullReplyHandler implements ReplyHandler {
 
 	public void receivedANS(Message message) {
 

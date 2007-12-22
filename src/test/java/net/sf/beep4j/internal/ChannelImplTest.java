@@ -20,7 +20,7 @@ import net.sf.beep4j.CloseChannelCallback;
 import net.sf.beep4j.CloseChannelRequest;
 import net.sf.beep4j.Message;
 import net.sf.beep4j.MessageStub;
-import net.sf.beep4j.NullReplyListener;
+import net.sf.beep4j.NullReplyHandler;
 import net.sf.beep4j.ReplyHandler;
 
 import org.jmock.Mock;
@@ -93,7 +93,7 @@ public class ChannelImplTest extends MockObjectTestCase {
 		channel.close(callback);
 		assertIsDead(channel);
 		try {
-			channel.sendMessage(new MessageStub(), new NullReplyListener());
+			channel.sendMessage(new MessageStub(), new NullReplyHandler());
 			fail("sending messages in dead state must fail");
 		} catch (IllegalStateException e) {
 			// expected
@@ -132,7 +132,7 @@ public class ChannelImplTest extends MockObjectTestCase {
 		channelHandlerMock.expects(once()).method("channelClosed");
 		
 		// test
-		channel.sendMessage(message, new NullReplyListener());
+		channel.sendMessage(message, new NullReplyHandler());
 		channel.close(callback);
 		assertIsShuttingDown(channel);
 		
@@ -162,7 +162,7 @@ public class ChannelImplTest extends MockObjectTestCase {
 		// test
 		channel.close(callback);
 		assertIsAlive(channel);
-		channel.sendMessage(message, new NullReplyListener());
+		channel.sendMessage(message, new NullReplyHandler());
 	}
 	
 	public void testDelayedDeclinedCloseRequest() throws Exception {
@@ -192,7 +192,7 @@ public class ChannelImplTest extends MockObjectTestCase {
 				.with(eq(1), same(m2), ANYTHING);
 		
 		// test
-		channel.sendMessage(m1, new NullReplyListener());
+		channel.sendMessage(m1, new NullReplyHandler());
 		channel.close(callback);
 		assertIsShuttingDown(channel);
 		
@@ -200,7 +200,7 @@ public class ChannelImplTest extends MockObjectTestCase {
 		listener.receivedNUL();
 		assertIsAlive(channel);
 		
-		channel.sendMessage(m2, new NullReplyListener());
+		channel.sendMessage(m2, new NullReplyHandler());
 	}
 	
 	public void testCloseRequestedAccepted() throws Exception {
@@ -248,7 +248,7 @@ public class ChannelImplTest extends MockObjectTestCase {
 		CloseChannelRequest request = (CloseChannelRequest) mock.proxy();
 
 		// test
-		channel.sendMessage(message, new NullReplyListener());
+		channel.sendMessage(message, new NullReplyHandler());
 		handler.channelCloseRequested(request);
 		assertIsShuttingDown(channel);
 		
@@ -302,7 +302,7 @@ public class ChannelImplTest extends MockObjectTestCase {
 		CloseChannelRequest request = (CloseChannelRequest) mock.proxy();
 
 		// test
-		channel.sendMessage(m1, new NullReplyListener());
+		channel.sendMessage(m1, new NullReplyHandler());
 		handler.channelCloseRequested(request);
 		assertIsShuttingDown(channel);
 		
@@ -310,7 +310,7 @@ public class ChannelImplTest extends MockObjectTestCase {
 		listener.receivedNUL();
 		assertIsAlive(channel);
 		
-		channel.sendMessage(m2, new NullReplyListener());
+		channel.sendMessage(m2, new NullReplyHandler());
 	}
 	
 	private static class CloseAcceptingStub implements Stub {
