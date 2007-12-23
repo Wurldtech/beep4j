@@ -178,7 +178,9 @@ public class SessionImpl
 	}
 	
 	private void info(String message) {
-		LOG.info(traceInfo() + message);
+		if (LOG.isInfoEnabled()) {
+			LOG.info(traceInfo() + message);
+		}
 	}
 	
 	private void warn(String message, Exception e) {
@@ -805,12 +807,12 @@ public class SessionImpl
 			setCurrentState(waitForResponseState);
 			channelManagementProfile.closeSession(new CloseCallback() {
 				public void closeDeclined(int code, String message) {
-					info("close session declined by remote peer: " + code + ":" + message);
+					debug("close session declined by remote peer: " + code + ":" + message);
 					performClose();
 				}
 			
 				public void closeAccepted() {
-					info("close session accepted by remote peer");
+					debug("close session accepted by remote peer");
 					performClose();
 				}
 				

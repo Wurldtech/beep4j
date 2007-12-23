@@ -31,8 +31,8 @@ import net.sf.beep4j.Initiator;
 import net.sf.beep4j.Message;
 import net.sf.beep4j.MessageBuilder;
 import net.sf.beep4j.ProfileInfo;
-import net.sf.beep4j.ReplyHandler;
 import net.sf.beep4j.Reply;
+import net.sf.beep4j.ReplyHandler;
 import net.sf.beep4j.Session;
 import net.sf.beep4j.SessionHandler;
 import net.sf.beep4j.SessionHandlerFactory;
@@ -45,6 +45,7 @@ import net.sf.beep4j.transport.mina.MinaListener;
 
 import org.apache.mina.common.IoAcceptor;
 import org.apache.mina.common.IoConnector;
+import org.apache.mina.common.ThreadModel;
 import org.apache.mina.transport.vmpipe.VmPipeAcceptor;
 import org.apache.mina.transport.vmpipe.VmPipeAddress;
 import org.apache.mina.transport.vmpipe.VmPipeConnector;
@@ -79,6 +80,7 @@ public class EchoIntegrationTest extends TestCase {
 		Semaphore sem = new Semaphore(-channels);
 		
 		IoAcceptor acceptor = new VmPipeAcceptor();
+		
 		SocketAddress address = new VmPipeAddress(port);
 
 		MinaListener listener = new MinaListener(acceptor);

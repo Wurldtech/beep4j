@@ -18,6 +18,8 @@ package net.sf.beep4j.ext;
 import net.sf.beep4j.Channel;
 import net.sf.beep4j.ChannelHandler;
 import net.sf.beep4j.CloseChannelRequest;
+import net.sf.beep4j.Message;
+import net.sf.beep4j.Reply;
 import net.sf.beep4j.internal.util.Assert;
 
 import org.slf4j.Logger;
@@ -69,6 +71,18 @@ public abstract class ChannelHandlerAdapter implements ChannelHandler {
 		Assert.notNull("channel", channel);
 		LOG.debug("channel opened");
 		this.channel = channel;
+	}
+	
+	/**
+	 * Notifies this handler that a message has been received. If you expect
+	 * messages to be received, implement this method. This default implementation
+	 * throws an exception.
+	 * 
+	 * @param message the received message
+	 * @param reply the reply that can be used to send a reply
+	 */
+	public void messageReceived(Message message, Reply reply) {
+		throw new UnsupportedOperationException();
 	}
 	
 	/**
