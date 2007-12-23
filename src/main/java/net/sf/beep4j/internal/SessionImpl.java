@@ -72,7 +72,7 @@ public class SessionImpl
 	
 	private final Map<Integer,Sequence<Integer>> messageNumberSequences = new HashMap<Integer,Sequence<Integer>>();
 	
-	private final Map<Integer,LinkedList<ReplyListenerHolder>> replyListeners = new HashMap<Integer,LinkedList<ReplyListenerHolder>>();
+	private final Map<Integer,LinkedList<ReplyHandlerHolder>> replyListeners = new HashMap<Integer,LinkedList<ReplyHandlerHolder>>();
 	
 	private final Map<String,Reply> responseHandlers = new HashMap<String,Reply>();
 	
@@ -154,7 +154,7 @@ public class SessionImpl
 	}
 
 	protected Reply createResponseHandler(TransportMapping mapping, int channelNumber, int messageNumber) {
-		Reply responseHandler = new DefaultResponseHandler(mapping, channelNumber, messageNumber);
+		Reply responseHandler = new DefaultReply(mapping, channelNumber, messageNumber);
 		setResponseHandler(channelNumber, messageNumber, responseHandler);
 		return responseHandler;
 	}
@@ -243,7 +243,7 @@ public class SessionImpl
 		channels.put(channelNumber, channel);
 		channelHandlers.put(channelNumber, handler);
 		messageNumberSequences.put(channelNumber, new IntegerSequence(1, 1));
-		replyListeners.put(channelNumber, new LinkedList<ReplyListenerHolder>());
+		replyListeners.put(channelNumber, new LinkedList<ReplyHandlerHolder>());
 		fireChannelStarted(channelNumber);
 	}
 
@@ -256,32 +256,32 @@ public class SessionImpl
 	}
 
 	private void registerReplyListener(int channelNumber, int messageNumber, ReplyHandler listener) {
-		LinkedList<ReplyListenerHolder> expectedReplies = replyListeners.get(channelNumber);
-		expectedReplies.addLast(new ReplyListenerHolder(messageNumber, listener));
+		LinkedList<ReplyHandlerHolder> expectedReplies = replyListeners.get(channelNumber);
+		expectedReplies.addLast(new ReplyHandlerHolder(messageNumber, listener));
 	}
 	
-	private static class ReplyListenerHolder {
+	private static class ReplyHandlerHolder {
 		private final int messageNumber;
-		private final ReplyHandler replyListener;
-		protected ReplyListenerHolder(int messageNumber, ReplyHandler listener) {
+		private final ReplyHandler replyHandler;
+		protected ReplyHandlerHolder(int messageNumber, ReplyHandler listener) {
 			this.messageNumber = messageNumber;
-			this.replyListener = listener;
+			this.replyHandler = listener;
 		}
-		protected void receiveANS(int channelNumber, int messageNumber, Message message) {
+		protected void receivedANS(int channelNumber, int messageNumber, Message message) {
 			validateMessageNumber(channelNumber, messageNumber);
-			replyListener.receivedANS(message);
+			replyHandler.receivedANS(message);
 		}
-		protected void receiveNUL(int channelNumber, int messageNumber) {
+		protected void receivedNUL(int channelNumber, int messageNumber) {
 			validateMessageNumber(channelNumber, messageNumber);
-			replyListener.receivedNUL();
+			replyHandler.receivedNUL();
 		}
-		protected void receiveERR(int channelNumber, int messageNumber, Message message) {
+		protected void receivedERR(int channelNumber, int messageNumber, Message message) {
 			validateMessageNumber(channelNumber, messageNumber);
-			replyListener.receivedERR(message);
+			replyHandler.receivedERR(message);
 		}
-		protected void receiveRPY(int channelNumber, int messageNumber, Message message) {
+		protected void receivedRPY(int channelNumber, int messageNumber, Message message) {
 			validateMessageNumber(channelNumber, messageNumber);
-			replyListener.receivedRPY(message);
+			replyHandler.receivedRPY(message);
 		}
 		private void validateMessageNumber(int channelNumber, int messageNumber) {
 			if (this.messageNumber != messageNumber) {
@@ -293,8 +293,8 @@ public class SessionImpl
 		}
 	}
 	
-	private ReplyListenerHolder unregisterReplyListener(int channelNumber) {
-		LinkedList<ReplyListenerHolder> listeners = replyListeners.get(channelNumber);
+	private ReplyHandlerHolder unregisterReplyListener(int channelNumber) {
+		LinkedList<ReplyHandlerHolder> listeners = replyListeners.get(channelNumber);
 		return listeners.removeFirst();
 	}
 
@@ -312,8 +312,8 @@ public class SessionImpl
 		return result;
 	}
 	
-	private ReplyListenerHolder getReplyListener(int channelNumber, int messageNumber) {
-		LinkedList<ReplyListenerHolder> listeners = replyListeners.get(channelNumber);
+	private ReplyHandlerHolder getReplyListener(int channelNumber, int messageNumber) {
+		LinkedList<ReplyHandlerHolder> listeners = replyListeners.get(channelNumber);
 		if (listeners.isEmpty()) {
 			throw new ProtocolException("received a reply but expects no outstanding replies");
 		}
@@ -618,7 +618,7 @@ public class SessionImpl
 		}
 		
 		public void connectionEstablished(SocketAddress address) {
-			Reply responseHandler = new InitialResponseHandler(mapping);
+			Reply responseHandler = new InitialReply(mapping);
 			setResponseHandler(0, 0, responseHandler);
 			if (!channelManagementProfile.connectionEstablished(address, sessionHandler, responseHandler)) {
 				setCurrentState(deadState);
@@ -768,15 +768,15 @@ public class SessionImpl
 
 		@Override
 		public void receiveANS(int channelNumber, int messageNumber, int answerNumber, Message message) {
-			ReplyListenerHolder listener = getReplyListener(channelNumber, messageNumber);
-			listener.receiveANS(channelNumber, messageNumber, message);
+			ReplyHandlerHolder listener = getReplyListener(channelNumber, messageNumber);
+			listener.receivedANS(channelNumber, messageNumber, message);
 		}
 		
 		@Override
 		public void receiveNUL(int channelNumber, int messageNumber) {
-			ReplyListenerHolder listener = getReplyListener(channelNumber, messageNumber);
+			ReplyHandlerHolder listener = getReplyListener(channelNumber, messageNumber);
 			try {
-				listener.receiveNUL(channelNumber, messageNumber);
+				listener.receivedNUL(channelNumber, messageNumber);
 			} finally {
 				unregisterReplyListener(channelNumber);
 			}
@@ -784,9 +784,9 @@ public class SessionImpl
 
 		@Override
 		public void receiveERR(int channelNumber, int messageNumber, Message message) {
-			ReplyListenerHolder listener = getReplyListener(channelNumber, messageNumber);
+			ReplyHandlerHolder listener = getReplyListener(channelNumber, messageNumber);
 			try {
-				listener.receiveERR(channelNumber, messageNumber, message);
+				listener.receivedERR(channelNumber, messageNumber, message);
 			} finally {
 				unregisterReplyListener(channelNumber);
 			}
@@ -794,9 +794,9 @@ public class SessionImpl
 
 		@Override
 		public void receiveRPY(int channelNumber, int messageNumber, Message message) {
-			ReplyListenerHolder listener = getReplyListener(channelNumber, messageNumber);
+			ReplyHandlerHolder listener = getReplyListener(channelNumber, messageNumber);
 			try {
-				listener.receiveRPY(channelNumber, messageNumber, message);
+				listener.receivedRPY(channelNumber, messageNumber, message);
 			} finally {
 				unregisterReplyListener(channelNumber);
 			}
@@ -906,7 +906,7 @@ public class SessionImpl
 				
 	}
 	
-	protected class DefaultResponseHandler implements Reply {
+	protected class DefaultReply implements Reply {
 		
 		private final TransportMapping mapping;
 		
@@ -918,7 +918,7 @@ public class SessionImpl
 		
 		private boolean complete;
 		
-		public DefaultResponseHandler(TransportMapping mapping, int channel, int messageNumber) {
+		public DefaultReply(TransportMapping mapping, int channel, int messageNumber) {
 			Assert.notNull("mapping", mapping);
 			this.mapping = mapping;
 			this.channel = channel;
@@ -972,9 +972,9 @@ public class SessionImpl
 		
 	}
 	
-	protected class InitialResponseHandler extends DefaultResponseHandler {
+	protected class InitialReply extends DefaultReply {
 		
-		public InitialResponseHandler(TransportMapping mapping) {
+		public InitialReply(TransportMapping mapping) {
 			super(mapping, 0, 0);
 		}
 		
@@ -985,7 +985,7 @@ public class SessionImpl
 		
 		@Override
 		public void sendNUL() {
-			throw new InternalException("ANS is not a valid initial response");
+			throw new InternalException("NUL is not a valid initial response");
 		}
 		
 	}

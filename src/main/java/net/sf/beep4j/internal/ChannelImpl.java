@@ -119,7 +119,7 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 	}
 	
 	public void messageReceived(Message message, Reply handler) {
-		state.messageReceived(message, new ResponseHandlerWrapper(handler));		
+		state.messageReceived(message, new ReplyWrapper(handler));		
 	}
 	
 	public void channelCloseRequested(CloseChannelRequest request) {
@@ -189,11 +189,11 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 		}
 	}
 	
-	private class ResponseHandlerWrapper implements Reply {
+	private class ReplyWrapper implements Reply {
 		
 		private final Reply target;
 		
-		private ResponseHandlerWrapper(Reply target) {
+		private ReplyWrapper(Reply target) {
 			this.target = target;
 			incrementOutstandingResponseCount();
 		}
