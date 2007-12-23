@@ -45,7 +45,6 @@ import net.sf.beep4j.transport.mina.MinaListener;
 
 import org.apache.mina.common.IoAcceptor;
 import org.apache.mina.common.IoConnector;
-import org.apache.mina.common.ThreadModel;
 import org.apache.mina.transport.vmpipe.VmPipeAcceptor;
 import org.apache.mina.transport.vmpipe.VmPipeAddress;
 import org.apache.mina.transport.vmpipe.VmPipeConnector;
