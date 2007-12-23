@@ -153,9 +153,9 @@ public class SessionImpl
 		return new ChannelImpl(session, profileUri, channelNumber);
 	}
 
-	protected Reply createResponseHandler(TransportMapping mapping, int channelNumber, int messageNumber) {
+	protected Reply createReply(TransportMapping mapping, int channelNumber, int messageNumber) {
 		Reply responseHandler = new DefaultReply(mapping, channelNumber, messageNumber);
-		setResponseHandler(channelNumber, messageNumber, responseHandler);
+		setReply(channelNumber, messageNumber, responseHandler);
 		return responseHandler;
 	}
 	
@@ -320,12 +320,12 @@ public class SessionImpl
 		return listeners.getFirst();
 	}
 	
-	private Reply getResponseHandler(int channelNumber, int messageNumber) {
+	private Reply getReply(int channelNumber, int messageNumber) {
 		Reply handler = responseHandlers.get(key(channelNumber, messageNumber));
 		return handler;
 	}
 	
-	private void setResponseHandler(int channelNumber, int messageNumber, Reply responseHandler) {
+	private void setReply(int channelNumber, int messageNumber, Reply responseHandler) {
 		responseHandlers.put(key(channelNumber, messageNumber), responseHandler);
 	}
 	
@@ -619,7 +619,7 @@ public class SessionImpl
 		
 		public void connectionEstablished(SocketAddress address) {
 			Reply responseHandler = new InitialReply(mapping);
-			setResponseHandler(0, 0, responseHandler);
+			setReply(0, 0, responseHandler);
 			if (!channelManagementProfile.connectionEstablished(address, sessionHandler, responseHandler)) {
 				setCurrentState(deadState);
 				mapping.closeTransport();
@@ -748,8 +748,8 @@ public class SessionImpl
 		
 		@Override
 		public void receiveMSG(int channelNumber, int messageNumber, Message message) {
-			Reply responseHandler = getResponseHandler(channelNumber, messageNumber);
-			if (responseHandler != null) {
+			Reply reply = getReply(channelNumber, messageNumber);
+			if (reply != null) {
 				// Validation of frames according to the BEEP specification section 2.2.1.1.
 				//
 				// A frame is poorly formed if the header starts with "MSG", and 
@@ -760,10 +760,10 @@ public class SessionImpl
 						+ "that has been received but for which a reply has not been "
 						+ "completely sent.");
 			}
-			responseHandler = createResponseHandler(mapping, channelNumber, messageNumber);
+			reply = createReply(mapping, channelNumber, messageNumber);
 			
 			ChannelHandler handler = getChannelHandler(channelNumber);
-			handler.messageReceived(message, responseHandler);
+			handler.messageReceived(message, reply);
 		}
 
 		@Override
