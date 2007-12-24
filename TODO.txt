@@ -1,9 +1,15 @@
-
 - synchronization
   - currently, all external access to the session is synchronized
   - however, beep4j calls application code (handlers) while still holding
     the session monitor
   - this could lead to deadlock (depending on how the application is programmed)
+
+- exception handling on client classes (handlers)
+  - SessionHandler, ChannelHandler, and ReplyHandler
+  - allow handlers to throw any exception?
+  - catch exceptions and
+    - terminate session?
+    - delegate back to the handlers?
 
 - ChannelFilter
   - same as IoFilter in MINA
@@ -33,25 +39,6 @@
       follow()
     }
   
-- callback interface vs. request object?
-
-  - StartChannelRequest / StartChannelCallback
-  - CloseChannelRequest / CloseChannelCallback
-  
-  - callback
-    - executes immediately (from the callstack of the application)
-  - request object
-    - executes after the application code returns
-  - we have StartSessionRequest and StartChannelRequest ...
-  - ... but CloseCallback and CloseChannelCallback
-  - some tiny difference: the StartSessionRequest is used to collect profiles
-  - CloseChannelCallback#closeAccepted / closeDeclined
-    - when passed to the application, it should be named accept / decline
-    - because that's how our naming convention is:
-      - callback methods are always named like event listener methods
-      - action methods are named like normal Java methods, i.e. verb[object]()
-    - for consistency reasons, we probably need a CloseChannelRequest
-  
 - SessionHandler
   - add method startChannelFailed?
   - add method exceptionCaught?
@@ -61,16 +48,6 @@
   - method ChannelManagementProfile#closeRequested?
 
 - support Content-Transfer-Encoding: base64, (quoted-printable)
-
-- review of exception handling on callback interfaces
-  - SessionHandler
-  - ChannelHandler
-  - ReplyListener
-  
-  - what is a sensitive action to these kind of exception?
-    - abort session?
-    - log and silently ignore exception? log into special application log?
-    - ???
   
 - general review of exception handling
     
@@ -82,15 +59,3 @@
   - channelStartRequested selects first supported profile according to list
   
   - maybe desired, wait for user feedback
-
-- ideas
-  - StartSessionRequest -> StartSessionEvent
-    -> no, it is a request, not an event
-  - StartChannelRequest -> StartChannelEvent
-    -> no, it is a request, not an event
-  - Session#close(:CloseCallback)
-    - then we have SessionHandler#channelClosed and CloseCallback#closeAccepted
-    - the same information at two places? maybe this makes sense, maybe not
-    -> leave it as it is at the moment
-  - tighter coupling between Mina and beepj?
-    - could easily be reintroduced later

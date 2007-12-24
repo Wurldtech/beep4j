@@ -119,7 +119,7 @@ public interface SessionHandler {
 	void channelStartRequested(StartChannelRequest request);
 	
 	/**
-	 * This method is invoked when the session is closed by the other peer.
+	 * This method is invoked when the session is closed.
 	 */
 	void sessionClosed();
 		

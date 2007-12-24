@@ -95,10 +95,10 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 		this.state.checkCondition();
 	}
 	
-	public void sendMessage(final Message message, final ReplyHandler listener) {
+	public void sendMessage(Message message, ReplyHandler reply) {
 		Assert.notNull("message", message);
-		Assert.notNull("listener", listener);
-		state.sendMessage(message, new ReplyListenerWrapper(listener));
+		Assert.notNull("listener", reply);
+		state.sendMessage(message, new ReplyHandlerWrapper(reply));
 	}
 	
 	public void close(CloseChannelCallback callback) {
@@ -118,8 +118,8 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 		channelHandler.channelOpened(this);		
 	}
 	
-	public void messageReceived(Message message, Reply handler) {
-		state.messageReceived(message, new ReplyWrapper(handler));		
+	public void messageReceived(Message message, Reply reply) {
+		state.messageReceived(message, new ReplyWrapper(reply));		
 	}
 	
 	public void channelCloseRequested(CloseChannelRequest request) {
@@ -157,14 +157,16 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 	}
 
 	/*
-	 * Wrapper for ReplyListener that decrements a counter whenever
-	 * a complete message has been received.
+	 * Wrapper for ReplyHandler that decrements a counter whenever
+	 * a complete message has been received. Intercepts calls to 
+	 * the real ReplyHandler from the application to make this
+	 * book-keeping possible.
 	 */
-	private class ReplyListenerWrapper implements ReplyHandler {
+	private class ReplyHandlerWrapper implements ReplyHandler {
 
 		private final ReplyHandler target;
 		
-		private ReplyListenerWrapper(ReplyHandler target) {
+		private ReplyHandlerWrapper(ReplyHandler target) {
 			this.target = target;
 			incrementOutstandingReplyCount();
 		}
@@ -278,7 +280,6 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 		
 		@Override
 		public void closeRequested(CloseChannelRequest request) {
-			// TODO: notify application (=ChannelHandler) about this event
 			setState(new CloseRequested(request));
 		}
 		
@@ -302,12 +303,10 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 			if (isReadyToShutdown()) {
 				session.requestChannelClose(channelNumber, new CloseChannelCallback() {
 					public void closeDeclined(int code, String message) {
-						// TODO how do we handle exceptions from the callback?
 						callback.closeDeclined(code, message);
 						setState(new Alive());
 					}
 					public void closeAccepted() {
-						// TODO how do we handle exceptions from the callback?
 						channelClosed();
 						callback.closeAccepted();
 						setState(new Dead());

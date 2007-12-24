@@ -24,6 +24,8 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import net.sf.beep4j.Channel;
 import net.sf.beep4j.ChannelHandler;
@@ -36,7 +38,10 @@ import net.sf.beep4j.ProfileInfo;
 import net.sf.beep4j.ProtocolException;
 import net.sf.beep4j.Reply;
 import net.sf.beep4j.ReplyHandler;
+import net.sf.beep4j.Session;
 import net.sf.beep4j.SessionHandler;
+import net.sf.beep4j.StartChannelRequest;
+import net.sf.beep4j.StartSessionRequest;
 import net.sf.beep4j.internal.message.DefaultMessageBuilder;
 import net.sf.beep4j.internal.profile.BEEPError;
 import net.sf.beep4j.internal.profile.ChannelManagementProfile;
@@ -92,6 +97,8 @@ public class SessionImpl
 	
 	private final StreamParser parser;
 	
+	private final Lock sessionLock = new ReentrantLock();
+	
 	private SessionState currentState;
 	
 	private SessionState initialState;
@@ -112,7 +119,7 @@ public class SessionImpl
 		Assert.notNull("mapping", mapping);
 		
 		this.initiator = initiator;
-		this.sessionHandler = sessionHandler;
+		this.sessionHandler = new SessionHandlerWrapper(sessionHandler);
 		this.mapping = mapping;
 		
 		addSessionListener(mapping);
@@ -144,7 +151,7 @@ public class SessionImpl
 	protected void initChannelManagementProfile() {
 		ChannelHandler channelHandler = channelManagementProfile.createChannelHandler(this);
 		InternalChannel channel = createChannel(this, "", 0);
-		channelHandler = channel.initChannel(channelHandler);
+		channelHandler = initChannel(channel, channelHandler);
 		channelHandler.channelOpened(channel);
 		registerChannel(0, channel, channelHandler);
 	}
@@ -152,11 +159,23 @@ public class SessionImpl
 	protected InternalChannel createChannel(InternalSession session, String profileUri, int channelNumber) {
 		return new ChannelImpl(session, profileUri, channelNumber);
 	}
+	
+	private ChannelHandler initChannel(InternalChannel channel, ChannelHandler handler) {
+		return new ChannelHandlerWrapper(channel.initChannel(handler));
+	}
 
 	protected Reply createReply(TransportMapping mapping, int channelNumber, int messageNumber) {
 		Reply responseHandler = new DefaultReply(mapping, channelNumber, messageNumber);
 		setReply(channelNumber, messageNumber, responseHandler);
 		return responseHandler;
+	}
+	
+	protected void lock() {
+		sessionLock.lock();
+	}
+	
+	protected void unlock() {
+		sessionLock.unlock();
 	}
 	
 	private String traceInfo() {
@@ -260,7 +279,7 @@ public class SessionImpl
 		expectedReplies.addLast(new ReplyHandlerHolder(messageNumber, listener));
 	}
 	
-	private static class ReplyHandlerHolder {
+	private class ReplyHandlerHolder {
 		private final int messageNumber;
 		private final ReplyHandler replyHandler;
 		protected ReplyHandlerHolder(int messageNumber, ReplyHandler listener) {
@@ -269,19 +288,39 @@ public class SessionImpl
 		}
 		protected void receivedANS(int channelNumber, int messageNumber, Message message) {
 			validateMessageNumber(channelNumber, messageNumber);
-			replyHandler.receivedANS(message);
+			unlock();
+			try {
+				replyHandler.receivedANS(message);
+			} finally {
+				lock();
+			}
 		}
 		protected void receivedNUL(int channelNumber, int messageNumber) {
 			validateMessageNumber(channelNumber, messageNumber);
-			replyHandler.receivedNUL();
+			unlock();
+			try {
+				replyHandler.receivedNUL();
+			} finally {
+				lock();
+			}
 		}
 		protected void receivedERR(int channelNumber, int messageNumber, Message message) {
 			validateMessageNumber(channelNumber, messageNumber);
-			replyHandler.receivedERR(message);
+			unlock();
+			try {
+				replyHandler.receivedERR(message);
+			} finally {
+				lock();
+			}
 		}
 		protected void receivedRPY(int channelNumber, int messageNumber, Message message) {
 			validateMessageNumber(channelNumber, messageNumber);
-			replyHandler.receivedRPY(message);
+			unlock();
+			try {
+				replyHandler.receivedRPY(message);
+			} finally {
+				lock();
+			}
 		}
 		private void validateMessageNumber(int channelNumber, int messageNumber) {
 			if (this.messageNumber != messageNumber) {
@@ -351,11 +390,11 @@ public class SessionImpl
 		return greeting.getProfiles();
 	}
 	
-	public synchronized void startChannel(String profileUri, ChannelHandler handler) {
+	public void startChannel(String profileUri, ChannelHandler handler) {
 		startChannel(new ProfileInfo(profileUri), handler);
 	}
 	
-	public synchronized void startChannel(final ProfileInfo profile, final ChannelHandler handler) {
+	public void startChannel(final ProfileInfo profile, final ChannelHandler handler) {
 		startChannel(new ProfileInfo[] { profile }, new ChannelHandlerFactory() {
 			public ChannelHandler createChannelHandler(ProfileInfo info) {
 				if (!profile.getUri().equals(info.getUri())) {
@@ -365,17 +404,32 @@ public class SessionImpl
 				return handler;
 			}
 			public void startChannelFailed(int code, String message) {
-				handler.channelStartFailed(code, message);
+				unlock();
+				try {
+					handler.channelStartFailed(code, message);
+				} finally {
+					lock();
+				}
 			}
 		});
 	}
 	
-	public synchronized void startChannel(ProfileInfo[] profiles, ChannelHandlerFactory factory) {
-		getCurrentState().startChannel(profiles, factory);
+	public void startChannel(ProfileInfo[] profiles, ChannelHandlerFactory factory) {
+		lock();
+		try {
+			getCurrentState().startChannel(profiles, factory);
+		} finally {
+			unlock();
+		}
 	}
 	
-	public synchronized void close() {
-		getCurrentState().closeSession();
+	public void close() {
+		lock();
+		try {
+			getCurrentState().closeSession();
+		} finally {
+			unlock();
+		}
 	}
 	
 	// --> end of Session methods <--
@@ -390,25 +444,35 @@ public class SessionImpl
 	 * - register the reply listener under that number
 	 * - pass the message to the underlying transport mapping
 	 */	
-	public synchronized void sendMessage(int channelNumber, Message message, ReplyHandler listener) {
-		getCurrentState().sendMessage(channelNumber, message, listener);
+	public void sendMessage(int channelNumber, Message message, ReplyHandler listener) {
+		lock();
+		try {
+			getCurrentState().sendMessage(channelNumber, message, listener);
+		} finally {
+			unlock();
+		}
 	}
 
 	/*
 	 * This method is called by the channel implementation to send a close channel
 	 * request to the other peer.
 	 */
-	public synchronized void requestChannelClose(final int channelNumber, final CloseChannelCallback callback) {
+	public void requestChannelClose(final int channelNumber, final CloseChannelCallback callback) {
 		Assert.notNull("callback", callback);
-		channelManagementProfile.closeChannel(channelNumber, new CloseChannelCallback() {
-			public void closeDeclined(int code, String message) {
-				callback.closeDeclined(code, message);
-			}
-			public void closeAccepted() {
-				unregisterChannel(channelNumber);
-				callback.closeAccepted();
-			}
-		});
+		lock();
+		try {
+			channelManagementProfile.closeChannel(channelNumber, new CloseChannelCallback() {
+				public void closeDeclined(int code, String message) {
+					callback.closeDeclined(code, message);
+				}
+				public void closeAccepted() {
+					unregisterChannel(channelNumber);
+					callback.closeAccepted();
+				}
+			});
+		} finally {
+			unlock();
+		}
 	}
 	
 	// --> end of InternalSession methods <--
@@ -429,7 +493,7 @@ public class SessionImpl
 	 * This method is invoked by the ChannelManagementProfile when the other
 	 * peer requests creating a new channel.
 	 */
-	public synchronized StartChannelResponse channelStartRequested(int channelNumber, ProfileInfo[] profiles) {
+	public StartChannelResponse channelStartRequested(int channelNumber, ProfileInfo[] profiles) {
 		return getCurrentState().channelStartRequested(channelNumber, profiles);
 	}
 	
@@ -439,21 +503,31 @@ public class SessionImpl
 	 * that is the application, which decides what to do with the request to
 	 * close the channel.
 	 */
-	public synchronized void channelCloseRequested(final int channelNumber, final CloseChannelRequest request) {
-		ChannelHandler handler = getChannelHandler(channelNumber);
-		handler.channelCloseRequested(new CloseChannelRequest() {
-			public void reject() {
-				request.reject();
-			}		
-			public void accept() {
-				request.accept();
-				unregisterChannel(channelNumber);
-			}
-		});
+	public void channelCloseRequested(final int channelNumber, final CloseChannelRequest request) {
+		lock();
+		try {
+			ChannelHandler handler = getChannelHandler(channelNumber);
+			handler.channelCloseRequested(new CloseChannelRequest() {
+				public void reject() {
+					request.reject();
+				}		
+				public void accept() {
+					request.accept();
+					unregisterChannel(channelNumber);
+				}
+			});
+		} finally {
+			unlock();
+		}
 	}
 	
-	public synchronized void sessionCloseRequested(CloseCallback callback) {
-		getCurrentState().sessionCloseRequested(callback);
+	public void sessionCloseRequested(CloseCallback callback) {
+		lock();
+		try {
+			getCurrentState().sessionCloseRequested(callback);
+		} finally {
+			unlock();
+		}
 	}
 	
 	// --> end of SessionManager methods <--
@@ -461,33 +535,145 @@ public class SessionImpl
 	
 	// --> start of MessageHandler methods <-- 
 
-	public synchronized void receiveMSG(int channelNumber, int messageNumber, Message message) {
+	public void receiveMSG(int channelNumber, int messageNumber, Message message) {
 		debug("received MSG: channel=", channelNumber, ",message=",  messageNumber);
 		getCurrentState().receiveMSG(channelNumber, messageNumber, message);
 	}
 
-	public synchronized void receiveANS(int channelNumber, int messageNumber, int answerNumber, Message message) {
+	public void receiveANS(int channelNumber, int messageNumber, int answerNumber, Message message) {
 		debug("received ANS: channel=", channelNumber, ",message=", messageNumber, ",answer=", answerNumber);
 		getCurrentState().receiveANS(channelNumber, messageNumber, answerNumber, message);
 	}
 	
-	public synchronized void receiveNUL(int channelNumber, int messageNumber) {
+	public void receiveNUL(int channelNumber, int messageNumber) {
 		debug("received NUL: channel=", channelNumber, ",message=", messageNumber);
 		getCurrentState().receiveNUL(channelNumber, messageNumber);
 	}
 
-	public synchronized void receiveERR(int channelNumber, int messageNumber, Message message) {
+	public void receiveERR(int channelNumber, int messageNumber, Message message) {
 		debug("received ERR: channel=", channelNumber, ",message=", messageNumber);
 		getCurrentState().receiveERR(channelNumber, messageNumber, message);
 	}
 		
-	public synchronized void receiveRPY(int channelNumber, int messageNumber, Message message) {
+	public void receiveRPY(int channelNumber, int messageNumber, Message message) {
 		debug("received RPY: channel=", channelNumber, ",message=", messageNumber);
 		getCurrentState().receiveRPY(channelNumber, messageNumber, message);
 	}
 	
 	// --> end of MessageHandler methods <--
 	
+	// --> channel handler wrapper <--
+	
+	private class ChannelHandlerWrapper implements ChannelHandler {
+		
+		private final ChannelHandler target;
+		
+		private ChannelHandlerWrapper(ChannelHandler target) {
+			Assert.notNull("target", target);
+			this.target = target;
+		}
+		
+		public void channelOpened(Channel c) {
+			unlock();
+			try {
+				target.channelOpened(c);
+			} finally {
+				lock();
+			}
+		}
+		
+		public void channelStartFailed(int code, String message) {
+			unlock();
+			try {
+				target.channelStartFailed(code, message);
+			} finally {
+				lock();
+			}
+		}
+		
+		public void messageReceived(Message message, Reply reply) {
+			unlock();
+			try {
+				target.messageReceived(message, reply);
+			} finally {
+				lock();
+			}
+		}
+		
+		public void channelCloseRequested(CloseChannelRequest request) {
+			unlock();
+			try {
+				target.channelCloseRequested(request);
+			} finally {
+				lock();
+			}
+		}
+		
+		public void channelClosed() {
+			unlock();
+			try {
+				target.channelClosed();
+			} finally {
+				lock();
+			}
+		}
+		
+	}
+	
+	private class SessionHandlerWrapper implements SessionHandler {
+		
+		private final SessionHandler target;
+		
+		private SessionHandlerWrapper(SessionHandler target) {
+			this.target = target;
+		}
+		
+		public void connectionEstablished(StartSessionRequest s) {
+			unlock();
+			try {
+				target.connectionEstablished(s);
+			} finally {
+				lock();
+			}
+		}
+		
+		public void sessionOpened(Session s) {
+			unlock();
+			try {
+				target.sessionOpened(s);
+			} finally {
+				lock();
+			}
+		}
+		
+		public void sessionStartDeclined(int code, String message) {
+			unlock();
+			try {
+				target.sessionStartDeclined(code, message);
+			} finally {
+				lock();
+			}
+		}
+		
+		public void channelStartRequested(StartChannelRequest request) {
+			unlock();
+			try {
+				target.channelStartRequested(request);
+			} finally {
+				lock();
+			}
+		}
+		
+		public void sessionClosed() {
+			unlock();
+			try {
+				target.sessionClosed();
+			} finally {
+				lock();
+			}
+		}
+		
+	}
 	
 	// --> start of TransportContext methods <--
 	
@@ -496,16 +682,22 @@ public class SessionImpl
 	 * ChannelManagementProfile then asks the application (SessionHandler)
 	 * whether to accept the connection and sends the appropriate response.
 	 */
-	public synchronized void connectionEstablished(SocketAddress address) {
-		getCurrentState().connectionEstablished(address);
+	public void connectionEstablished(SocketAddress address) {
+		lock();
+		try {
+			getCurrentState().connectionEstablished(address);
+		} finally {
+			unlock();
+		}
 	}
 	
-	public synchronized void exceptionCaught(Throwable cause) {
+	public void exceptionCaught(Throwable cause) {
 		// TODO: implement this method
 		LOG.warn("exception caught by transport", cause);
 	}
 	
-	public synchronized void messageReceived(ByteBuffer buffer) {		
+	public void messageReceived(ByteBuffer buffer) {
+		lock();
 		try {
 			parser.process(buffer);
 		} catch (ProtocolException e) {
@@ -516,15 +708,22 @@ public class SessionImpl
 				setCurrentState(deadState);
 				mapping.closeTransport();
 			}
+		} finally {
+			unlock();
 		}
 	}
 	
-	public synchronized void connectionClosed() {
-		getCurrentState().connectionClosed();
+	public void connectionClosed() {
+		lock();
+		try {
+			getCurrentState().connectionClosed();
+		} finally {
+			unlock();
+		}
 	}
 	
 	// --> end of TransportContext methods <--
-	
+
 	protected static interface SessionState extends MessageHandler {
 		
 		void connectionEstablished(SocketAddress address);
@@ -618,9 +817,9 @@ public class SessionImpl
 		}
 		
 		public void connectionEstablished(SocketAddress address) {
-			Reply responseHandler = new InitialReply(mapping);
-			setReply(0, 0, responseHandler);
-			if (!channelManagementProfile.connectionEstablished(address, sessionHandler, responseHandler)) {
+			Reply reply = new InitialReply(mapping);
+			setReply(0, 0, reply);
+			if (!channelManagementProfile.connectionEstablished(address, sessionHandler, reply)) {
 				setCurrentState(deadState);
 				mapping.closeTransport();
 			}
@@ -697,7 +896,7 @@ public class SessionImpl
 					ChannelHandler handler = factory.createChannelHandler(info);
 					InternalChannel channel = createChannel(
 							SessionImpl.this, info.getUri(), channelNumber);
-					ChannelHandler channelHandler = channel.initChannel(handler);
+					ChannelHandler channelHandler = initChannel(channel, handler);
 					registerChannel(channelNumber, channel, channelHandler);
 					channelHandler.channelOpened(channel);
 				}
@@ -942,32 +1141,48 @@ public class SessionImpl
 
 		public void sendANS(Message message) {
 			Assert.notNull("message", message);
-			checkCompletion();
-			debug("sendANS on channel ", channel, " to message ", messageNumber, " (", answerNumber, ")");
-			mapping.sendANS(channel, messageNumber, answerNumber++, message);
+			lock();
+			try {
+				checkCompletion();
+				mapping.sendANS(channel, messageNumber, answerNumber++, message);
+			} finally {
+				unlock();
+			}
 		}
 		
 		public void sendERR(Message message) {
 			Assert.notNull("message", message);
-			checkCompletion();
-			debug("sendERR on channel ", channel, " to message ", messageNumber);
-			mapping.sendERR(channel, messageNumber, message);
-			complete();
+			lock();
+			try {
+				checkCompletion();
+				mapping.sendERR(channel, messageNumber, message);
+				complete();
+			} finally {
+				unlock();
+			}
 		}
 		
 		public void sendNUL() {
-			checkCompletion();
-			debug("sendNUL on channel ", channel, " to message ", messageNumber);
-			mapping.sendNUL(channel, messageNumber);
-			complete();
+			lock();
+			try {
+				checkCompletion();
+				mapping.sendNUL(channel, messageNumber);
+				complete();
+			} finally {
+				unlock();
+			}
 		}
 		
 		public void sendRPY(Message message) {
 			Assert.notNull("message", message);
-			checkCompletion();
-			debug("sendRPY on channel ", channel, " to message ", messageNumber);
-			mapping.sendRPY(channel, messageNumber, message);
-			complete();
+			lock();
+			try {
+				checkCompletion();
+				mapping.sendRPY(channel, messageNumber, message);
+				complete();
+			} finally {
+				unlock();
+			}
 		}
 		
 	}

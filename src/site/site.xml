@@ -13,7 +13,7 @@
   
   <poweredBy>
     <logo name="Hosted on SourceForge.net" href="http://sourceforge.net"
-          img="http://sflogo.sourceforge.net/sflogo.php?group_id=113660&amp;type=2"/>
+          img="http://sflogo.sourceforge.net/sflogo.php?group_id=182141&amp;type=4"/>
     <logo name="Build with Maven 2" href="http://maven.apache.org/"
           img="images/logos/maven-feather.png"/>
   </poweredBy>
@@ -42,22 +42,6 @@
       <item name="Sourceforge" href="http://sourceforge.net/projects/beep4j/"/>
     </menu>
     
-    <!--<menu name="MINA Community">
-      <item name="Mailing List" href="mail-lists.html"/>
-      <item name="Issue Tracker" href="http://issues.apache.org/jira/browse/DIRMINA"/>
-      <item name="Wiki Pages" href="http://wiki.apache.org/directory/MinaHome"/>
-    </menu>
- 
-    <menu name="MINA References">
-      <item name="JavaDocs" href="/apidocs/index.html"/>
-      <item name="Examples" href="http://svn.apache.org/viewvc/directory/trunks/mina/examples/src/main/java/org/apache/mina/examples/"/>
-      <item name="Source code" href="http://svn.apache.org/viewvc/directory/trunks/mina/"/>
-    </menu>
-
-    <menu name="Older Releases">
-      <item name="0.8" href="/branches/0.8/index.html"/>
-    </menu>-->
-
     ${reports}
         
   </body>

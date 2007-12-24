@@ -33,6 +33,9 @@
       </p>
     </section>
     <section name="News">
+      <h3>Release beep4j 0.1.1</h3>
+      <p>The second release of beep4j is available. You can download the new version from the sourceforge website:
+         <a href="http://sourceforge.net/project/showfiles.php?group_id=182141&amp;package_id=211216">beep4j-0.1.1</a>.</p>
       <h3>Release beep4j 0.1.0</h3>
       <p>The first official release is available. You can download the
          version 0.1.0 from the sourceforge website:
