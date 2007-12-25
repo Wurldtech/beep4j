@@ -17,7 +17,14 @@ package net.sf.beep4j.transport.mina;
 
 import net.sf.beep4j.ChannelFilterChainBuilder;
 import net.sf.beep4j.SessionHandler;
+import net.sf.beep4j.internal.DefaultStreamParser;
+import net.sf.beep4j.internal.DefaultTransportContext;
+import net.sf.beep4j.internal.DelegatingFrameHandler;
+import net.sf.beep4j.internal.FrameHandler;
+import net.sf.beep4j.internal.FrameHandlerFactory;
+import net.sf.beep4j.internal.MessageAssembler;
 import net.sf.beep4j.internal.SessionImpl;
+import net.sf.beep4j.internal.StreamParser;
 import net.sf.beep4j.internal.TransportMapping;
 import net.sf.beep4j.internal.tcp.TCPMapping;
 import net.sf.beep4j.internal.util.HexDump;
@@ -49,7 +56,16 @@ public class MinaTransport extends IoHandlerAdapter implements Transport {
 	
 	public MinaTransport(boolean initiator, SessionHandler sessionHandler, ChannelFilterChainBuilder builder) {
 		TransportMapping mapping = new TCPMapping(this);
-		context = new LoggingTransportContext(new SessionImpl(initiator, sessionHandler, mapping));
+		final SessionImpl session = new SessionImpl(initiator, sessionHandler, mapping);
+		DelegatingFrameHandler assembler = new DelegatingFrameHandler(new FrameHandlerFactory() {
+			public FrameHandler createFrameHandler() {
+				return new MessageAssembler(session);
+			}
+		});
+		session.addSessionListener(assembler);
+		StreamParser parser = new DefaultStreamParser(assembler, mapping);
+		TransportContext target = new DefaultTransportContext(session, parser);
+		context = new LoggingTransportContext(target);
 	}
 	
 	public void sendBytes(java.nio.ByteBuffer buffer) {

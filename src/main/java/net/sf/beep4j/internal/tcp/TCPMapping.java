@@ -24,6 +24,12 @@ import net.sf.beep4j.internal.TransportMapping;
 import net.sf.beep4j.internal.util.Assert;
 import net.sf.beep4j.transport.Transport;
 
+/**
+ * The TCPMapping implements the mapping of BEEP onto TCP as specified
+ * by RFC 3081.
+ * 
+ * @author Simon Raess
+ */
 public class TCPMapping implements TransportMapping, ChannelControllerFactory {
 
 	private static final int DEFAULT_BUFFER_SIZE = 4096;
@@ -134,7 +140,7 @@ public class TCPMapping implements TransportMapping, ChannelControllerFactory {
 	private ChannelController getChannelController(int channel) {
 		ChannelController controller = channels.get(new Integer(channel));
 		if (controller == null) {
-			throw new ProtocolException("unkown channel: " + channel);
+			throw new ProtocolException("unknown channel: " + channel);
 		}
 		return controller;
 	}

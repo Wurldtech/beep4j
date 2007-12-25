@@ -34,7 +34,7 @@ final class DefaultStartChannelRequest implements StartChannelRequest {
 	public StartChannelResponse getResponse() {
 		if (response == null) {
 			response = StartChannelResponse.createCancelledResponse(
-					550, "all requested profiles are not supported");
+					550, "none of the requested profiles are supported");
 		}
 		return response;
 	}

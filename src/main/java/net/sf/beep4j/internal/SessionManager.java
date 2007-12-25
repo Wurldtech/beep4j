@@ -19,7 +19,8 @@ import net.sf.beep4j.CloseChannelRequest;
 import net.sf.beep4j.ProfileInfo;
 
 /**
- * The SessionManager is used to start / close channels.
+ * The SessionManager is used to start / close channels and to close
+ * a session.
  * 
  * @author Simon Raess
  */

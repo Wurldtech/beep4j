@@ -20,9 +20,9 @@ import java.nio.ByteBuffer;
 import net.sf.beep4j.internal.util.Assert;
 import net.sf.beep4j.transport.Transport;
 
-public class Frame {
-	private DataHeader header;
-	private ByteBuffer payload;
+public final class Frame {
+	private final DataHeader header;
+	private final ByteBuffer payload;
 	
 	public Frame(DataHeader header, ByteBuffer payload) {
 		Assert.notNull("header", header);

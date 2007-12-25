@@ -1,5 +1,5 @@
 /*
- *  Copyright 2006 Simon Raess
+ *  Copyright 2007 Simon Raess
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -13,28 +13,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.transport;
+package net.sf.beep4j.internal;
 
-import java.nio.ByteBuffer;
+import java.net.SocketAddress;
 
-/**
- * The Transport interface has to be implemented by the transport
- * layer.
- * 
- * @author Simon Raess
- */
-public interface Transport {
-	
-	/**
-	 * Sends the passed in bytes to the other peer.
-	 * 
-	 * @param buffer the ByteBuffer holding the bytes to be transfered
-	 */
-	void sendBytes(ByteBuffer buffer);
+public interface TransportHandler {
 
-	/**
-	 * Instructs the transport layer to close the connection.
-	 */
-	void closeTransport();
-	
+	void connectionEstablished(SocketAddress address);
+
+	void exceptionCaught(Throwable cause);
+
+	void connectionClosed();
+
 }

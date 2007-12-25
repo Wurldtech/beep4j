@@ -356,7 +356,6 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 					public void accept() {
 						setState(new Dead());
 						request.accept();
-						// TODO: handle exceptions
 						channelHandler.channelClosed();
 					}
 				});

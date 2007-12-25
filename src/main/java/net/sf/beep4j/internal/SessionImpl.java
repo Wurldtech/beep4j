@@ -16,7 +16,6 @@
 package net.sf.beep4j.internal;
 
 import java.net.SocketAddress;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -51,7 +50,6 @@ import net.sf.beep4j.internal.profile.StartChannelCallback;
 import net.sf.beep4j.internal.util.Assert;
 import net.sf.beep4j.internal.util.IntegerSequence;
 import net.sf.beep4j.internal.util.Sequence;
-import net.sf.beep4j.transport.TransportContext;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,7 +67,7 @@ import org.slf4j.LoggerFactory;
  * @author Simon Raess
  */
 public class SessionImpl 
-		implements MessageHandler, SessionManager, InternalSession, TransportContext, FrameHandlerFactory {
+		implements MessageHandler, SessionManager, InternalSession, TransportHandler {
 	
 	private final Logger LOG = LoggerFactory.getLogger(SessionImpl.class);
 	
@@ -94,8 +92,6 @@ public class SessionImpl
 	private final Sequence<Integer> channelNumberSequence;
 	
 	private final List<SessionListener> listeners = Collections.synchronizedList(new ArrayList<SessionListener>());
-	
-	private final StreamParser parser;
 	
 	private final Lock sessionLock = new ReentrantLock();
 	
@@ -123,25 +119,17 @@ public class SessionImpl
 		this.mapping = mapping;
 		
 		addSessionListener(mapping);
-		
-		DelegatingFrameHandler frameHandler = new DelegatingFrameHandler(this);
-		addSessionListener(frameHandler);
-		
+				
 		this.channelManagementProfile = createChannelManagementProfile(initiator);
 		initChannelManagementProfile();
 		
 		this.channelNumberSequence = new IntegerSequence(initiator ? 1 : 2, 2);
-		this.parser = createStreamParser(frameHandler, mapping);
 		
 		initialState = new InitialState();
 		aliveState = new AliveState();
 		waitForResponseState = new WaitForResponseState();
 		deadState = new DeadState();
 		currentState = initialState;
-	}
-
-	protected StreamParser createStreamParser(FrameHandler frameHandler, TransportMapping mapping) {
-		return new DefaultStreamParser(frameHandler, mapping);
 	}
 	
 	protected ChannelManagementProfile createChannelManagementProfile(boolean initiator) {
@@ -215,7 +203,7 @@ public class SessionImpl
 		return currentState;
 	}
 
-	protected void addSessionListener(SessionListener l) {
+	public void addSessionListener(SessionListener l) {
 		listeners.add(l);
 	}
 	
@@ -476,16 +464,7 @@ public class SessionImpl
 	}
 	
 	// --> end of InternalSession methods <--
-	
-	
-	// --> start of FrameHandlerFactory methods <--
-	
-	public FrameHandler createFrameHandler() {
-		return new MessageAssembler(this);
-	}
-	
-	// --> end of FrameHandlerFactory methods <--
-	
+		
 	
 	// --> start of SessionManager methods <--
 	
@@ -675,7 +654,7 @@ public class SessionImpl
 		
 	}
 	
-	// --> start of TransportContext methods <--
+	// --> start of TransportHandler methods <--
 	
 	/*
 	 * Notifies the ChannelManagementProfile about this event. The
@@ -694,22 +673,14 @@ public class SessionImpl
 	public void exceptionCaught(Throwable cause) {
 		// TODO: implement this method
 		LOG.warn("exception caught by transport", cause);
-	}
-	
-	public void messageReceived(ByteBuffer buffer) {
-		lock();
-		try {
-			parser.process(buffer);
-		} catch (ProtocolException e) {
-			warn("dropping connection because of a protocol exception", e);
+		if (cause instanceof ProtocolException) {
+			warn("dropping connection because of a protocol exception", (ProtocolException) cause);
 			try {
 				sessionHandler.sessionClosed();
 			} finally {
 				setCurrentState(deadState);
 				mapping.closeTransport();
 			}
-		} finally {
-			unlock();
 		}
 	}
 	
@@ -722,7 +693,7 @@ public class SessionImpl
 		}
 	}
 	
-	// --> end of TransportContext methods <--
+	// --> end of TransportHandler methods <--
 
 	protected static interface SessionState extends MessageHandler {
 		
