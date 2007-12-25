@@ -140,7 +140,12 @@ public class SessionImpl
 		ChannelHandler channelHandler = channelManagementProfile.createChannelHandler(this);
 		InternalChannel channel = createChannel(this, "", 0);
 		channelHandler = initChannel(channel, channelHandler);
-		channelHandler.channelOpened(channel);
+		lock();
+		try {
+			channelHandler.channelOpened(channel);
+		} finally {
+			unlock();
+		}
 		registerChannel(0, channel, channelHandler);
 	}
 		
@@ -473,7 +478,12 @@ public class SessionImpl
 	 * peer requests creating a new channel.
 	 */
 	public StartChannelResponse channelStartRequested(int channelNumber, ProfileInfo[] profiles) {
-		return getCurrentState().channelStartRequested(channelNumber, profiles);
+		lock();
+		try {
+			return getCurrentState().channelStartRequested(channelNumber, profiles);
+		} finally {
+			unlock();
+		}
 	}
 	
 	/*
@@ -516,27 +526,52 @@ public class SessionImpl
 
 	public void receiveMSG(int channelNumber, int messageNumber, Message message) {
 		debug("received MSG: channel=", channelNumber, ",message=",  messageNumber);
-		getCurrentState().receiveMSG(channelNumber, messageNumber, message);
+		lock();
+		try {
+			getCurrentState().receiveMSG(channelNumber, messageNumber, message);
+		} finally {
+			unlock();
+		}
 	}
 
 	public void receiveANS(int channelNumber, int messageNumber, int answerNumber, Message message) {
 		debug("received ANS: channel=", channelNumber, ",message=", messageNumber, ",answer=", answerNumber);
-		getCurrentState().receiveANS(channelNumber, messageNumber, answerNumber, message);
+		lock();
+		try {
+			getCurrentState().receiveANS(channelNumber, messageNumber, answerNumber, message);
+		} finally {
+			unlock();
+		}
 	}
 	
 	public void receiveNUL(int channelNumber, int messageNumber) {
 		debug("received NUL: channel=", channelNumber, ",message=", messageNumber);
-		getCurrentState().receiveNUL(channelNumber, messageNumber);
+		lock();
+		try {
+			getCurrentState().receiveNUL(channelNumber, messageNumber);
+		} finally {
+			unlock();
+		}
 	}
 
 	public void receiveERR(int channelNumber, int messageNumber, Message message) {
 		debug("received ERR: channel=", channelNumber, ",message=", messageNumber);
-		getCurrentState().receiveERR(channelNumber, messageNumber, message);
+		lock();
+		try {
+			getCurrentState().receiveERR(channelNumber, messageNumber, message);
+		} finally {
+			unlock();
+		}
 	}
 		
 	public void receiveRPY(int channelNumber, int messageNumber, Message message) {
 		debug("received RPY: channel=", channelNumber, ",message=", messageNumber);
-		getCurrentState().receiveRPY(channelNumber, messageNumber, message);
+		lock();
+		try {
+			getCurrentState().receiveRPY(channelNumber, messageNumber, message);
+		} finally {
+			unlock();
+		}
 	}
 	
 	// --> end of MessageHandler methods <--
@@ -864,15 +899,25 @@ public class SessionImpl
 			final int channelNumber = getNextChannelNumber();
 			channelManagementProfile.startChannel(channelNumber, profiles, new StartChannelCallback() {
 				public void channelCreated(ProfileInfo info) {
-					ChannelHandler handler = factory.createChannelHandler(info);
-					InternalChannel channel = createChannel(
-							SessionImpl.this, info.getUri(), channelNumber);
-					ChannelHandler channelHandler = initChannel(channel, handler);
-					registerChannel(channelNumber, channel, channelHandler);
-					channelHandler.channelOpened(channel);
+					lock();
+					try {
+						ChannelHandler handler = factory.createChannelHandler(info);
+						InternalChannel channel = createChannel(
+								SessionImpl.this, info.getUri(), channelNumber);
+						ChannelHandler channelHandler = initChannel(channel, handler);
+						registerChannel(channelNumber, channel, channelHandler);
+						channelHandler.channelOpened(channel);
+					} finally {
+						unlock();
+					}
 				}
 				public void channelFailed(int code, String message) {
-					factory.startChannelFailed(code, message);
+					lock();
+					try {
+						factory.startChannelFailed(code, message);
+					} finally {
+						unlock();
+					}
 				}
 			});
 		}
@@ -978,12 +1023,22 @@ public class SessionImpl
 			channelManagementProfile.closeSession(new CloseCallback() {
 				public void closeDeclined(int code, String message) {
 					debug("close session declined by remote peer: " + code + ":" + message);
-					performClose();
+					lock();
+					try {
+						performClose();
+					} finally {
+						unlock();
+					}
 				}
 			
 				public void closeAccepted() {
 					debug("close session accepted by remote peer");
-					performClose();
+					lock();
+					try {
+						performClose();
+					} finally {
+						unlock();
+					}
 				}
 				
 				private void performClose() {

@@ -63,6 +63,8 @@ public class MinaTransport extends IoHandlerAdapter implements Transport {
 			}
 		});
 		session.addSessionListener(assembler);
+		assembler.channelStarted(0);
+		
 		StreamParser parser = new DefaultStreamParser(assembler, mapping);
 		TransportContext target = new DefaultTransportContext(session, parser);
 		context = new LoggingTransportContext(target);

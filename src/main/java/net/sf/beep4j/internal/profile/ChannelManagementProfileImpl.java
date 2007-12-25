@@ -243,11 +243,11 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 			}
 		
 			public void receivedNUL() {
-				throw new ProtocolException("message type NUL is not a valid response");		
+				throw new ProtocolException("message type NUL is not a valid response to a start channel request");		
 			}
 			
 			public void receivedANS(Message message) {
-				throw new ProtocolException("message type ANS is not a valid response");		
+				throw new ProtocolException("message type ANS is not a valid response to a start channel request");
 			}
 		});
 	}
