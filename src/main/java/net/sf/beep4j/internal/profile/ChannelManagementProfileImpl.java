@@ -199,24 +199,24 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 	public boolean connectionEstablished(
 			SocketAddress address, 
 			SessionHandler sessionHandler, 
-			Reply response) {
+			Reply reply) {
 		DefaultStartSessionRequest request = new DefaultStartSessionRequest(!initiator);
 		sessionHandler.connectionEstablished(request);
 		
 		if (request.isCancelled()) {
-			response.sendERR(createError(request.getReplyCode(), request.getMessage()));
+			reply.sendERR(createError(request.getReplyCode(), request.getMessage()));
 		} else {
-			response.sendRPY(createGreeting(request.getProfiles()));
+			reply.sendRPY(createGreeting(request.getProfiles()));
 		}
 		
 		return !request.isCancelled();
 	}
 	
-	public Message createGreeting(String[] profiles) {
+	protected Message createGreeting(String[] profiles) {
 		return builder.createGreeting(createMessageBuilder(), profiles);
 	}
 	
-	public Message createError(int code, String diagnostics) {
+	protected Message createError(int code, String diagnostics) {
 		return builder.createError(createMessageBuilder(), code, diagnostics);
 	}
 
@@ -243,11 +243,11 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 			}
 		
 			public void receivedNUL() {
-				throw new ProtocolException("message type NUL is not a valid response to a start channel request");		
+				throw new ProtocolException("NUL is not a valid response to a start channel request");		
 			}
 			
 			public void receivedANS(Message message) {
-				throw new ProtocolException("message type ANS is not a valid response to a start channel request");
+				throw new ProtocolException("ANS is not a valid response to a start channel request");
 			}
 		});
 	}
@@ -267,11 +267,11 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 			}
 		
 			public void receivedANS(Message message) {
-				throw new UnsupportedOperationException();		
+				throw new ProtocolException("ANS is not a valid response to a close channel request");		
 			}
 			
 			public void receivedNUL() {
-				throw new UnsupportedOperationException();		
+				throw new ProtocolException("NUL is not a valid response to a close channel request");		
 			}
 		
 		});
@@ -292,11 +292,11 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 			}
 		
 			public void receivedANS(Message message) {
-				throw new ProtocolException("ANS message not valid response for close request");
+				throw new ProtocolException("ANS message not valid response for close session request");
 			}
 			
 			public void receivedNUL() {
-				throw new ProtocolException("NUL message not valid response for close request");
+				throw new ProtocolException("NUL message not valid response for close session request");
 			}
 		
 		});
