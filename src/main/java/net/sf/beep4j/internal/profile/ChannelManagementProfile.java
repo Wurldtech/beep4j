@@ -56,8 +56,7 @@ public interface ChannelManagementProfile {
 	 * @return true iff the connection is established. Returning false from
 	 *              this method will drop the connection.
 	 */
-	boolean connectionEstablished(SocketAddress address, SessionHandler handler, 
-			Reply response);
+	boolean connectionEstablished(SocketAddress address, SessionHandler handler, Reply response);
 
 	/**
 	 * Invoked by the session when a greeting has been received during
@@ -107,5 +106,32 @@ public interface ChannelManagementProfile {
 	 * @param callback the callback used to notify about the response
 	 */
 	void closeSession(CloseCallback callback);
+
+	/**
+	 * Invoked by the ManagementChannelHandler whenever the remote peer requests
+	 * to start a channel.
+	 * 
+	 * @param channelNumber the channel number
+	 * @param profiles the set of desired profiles for the new channel
+	 * @param reply the {@link Reply} object needed to send back the reply
+	 */
+	void startChannelRequested(int channelNumber, ProfileInfo[] profiles, Reply reply);
+
+	/**
+	 * Invoked by the ManagementChannelHandler whenever the remote peer
+	 * requests to close the session.
+	 * 
+	 * @param reply the {@link Reply} object needed to send back the reply
+	 */
+	void closeSessionRequested(Reply reply);
+
+	/**
+	 * Invoked by the ManagementChannelHandler whenever the remote peer
+	 * requests to close a channel.
+	 * 
+	 * @param channelNumber the channel to be closed
+	 * @param reply the {@link Reply} object needed to send back the reply
+	 */
+	void closeChannelRequested(int channelNumber, Reply reply);
 
 }

@@ -348,17 +348,16 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 		@Override
 		public void checkCondition() {
 			if (isReadyToShutdown()) {
-				channelHandler.channelCloseRequested(new CloseChannelRequest() {
-					public void reject() {
-						setState(new Alive());
-						request.reject();
-					}
-					public void accept() {
-						setState(new Dead());
-						request.accept();
-						channelHandler.channelClosed();
-					}
-				});
+				DefaultCloseChannelRequest request = new DefaultCloseChannelRequest();
+				channelHandler.channelCloseRequested(request);
+				if (request.isAccepted()) {
+					channelHandler.channelClosed();
+					setState(new Dead());
+					this.request.accept();
+				} else {
+					setState(new Alive());
+					this.request.reject();
+				}
 			}
 		}
 	}

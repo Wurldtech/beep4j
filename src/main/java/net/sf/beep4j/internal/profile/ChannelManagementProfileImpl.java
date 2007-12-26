@@ -17,21 +17,21 @@ package net.sf.beep4j.internal.profile;
 
 import java.net.SocketAddress;
 
-import net.sf.beep4j.Channel;
 import net.sf.beep4j.ChannelHandler;
 import net.sf.beep4j.CloseChannelCallback;
-import net.sf.beep4j.CloseChannelRequest;
 import net.sf.beep4j.Message;
 import net.sf.beep4j.MessageBuilder;
 import net.sf.beep4j.ProfileInfo;
 import net.sf.beep4j.ProtocolException;
-import net.sf.beep4j.ReplyHandler;
 import net.sf.beep4j.Reply;
+import net.sf.beep4j.ReplyHandler;
 import net.sf.beep4j.SessionHandler;
 import net.sf.beep4j.internal.CloseCallback;
+import net.sf.beep4j.internal.DefaultCloseChannelRequest;
 import net.sf.beep4j.internal.DefaultStartSessionRequest;
 import net.sf.beep4j.internal.SessionManager;
 import net.sf.beep4j.internal.StartChannelResponse;
+import net.sf.beep4j.internal.message.DefaultMessageBuilder;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,13 +41,11 @@ import org.slf4j.LoggerFactory;
  * 
  * @author Simon Raess
  */
-public class ChannelManagementProfileImpl implements ChannelHandler, ChannelManagementProfile {
+public class ChannelManagementProfileImpl implements ChannelManagementProfile {
 	
 	private static final Logger LOG = LoggerFactory.getLogger(ChannelManagementProfile.class);
 	
 	private SessionManager manager;
-	
-	private Channel channel;
 	
 	private final boolean initiator;
 	
@@ -70,130 +68,15 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 	}
 	
 	protected MessageBuilder createMessageBuilder() {
-		MessageBuilder builder = channel.createMessageBuilder();
+		MessageBuilder builder = new DefaultMessageBuilder();
 		builder.setContentType("application", "beep+xml");
 		builder.setCharsetName("UTF-8");
 		return builder;
 	}
-	
-	
-	// --> start of ChannelHandler methods <--
-	
-	/**
-	 * This method is only called on channels created through the
-	 * startChannel methods of the Session. Thus, this method can
-	 * safely throw an UnsupportedOperationException because it
-	 * is never called. The channel management profile is created
-	 * by the session itself when it starts up.
-	 * 
-	 * @throws UnsupportedOperationException unconditionally
-	 */
-	public void channelStartFailed(int code, String message) {
-		throw new UnsupportedOperationException();
-	}
-	
-	public void channelOpened(Channel c) {
-		this.channel = c;
-	}
-	
-	public void messageReceived(Message message, final Reply handler) {
-		ChannelManagementRequest r = parser.parseRequest(message);
-		LOG.debug("received request " + r);
 		
-		if (r instanceof StartChannelMessage) {
-			StartChannelMessage request = (StartChannelMessage) r; 
-			int channelNumber = request.getChannelNumber();
-			
-			// validate start channel request
-			if (initiator && channelNumber % 2 != 0) {
-				LOG.warn("received invalid start channel request: number attribute in <start> element must be " 
-						+ "odd valued (was=" + channelNumber + ")");
-				handler.sendERR(builder.createError(
-						createMessageBuilder(), 501, "number attribute in <start> element must be odd valued"));
-			} else if (!initiator && channelNumber % 2 != 1) {
-				LOG.warn("received invalid start channel request: number attribute in <start> element must be "
-						+ "even valued (was=" + channelNumber + ")");
-				handler.sendERR(builder.createError(
-						createMessageBuilder(), 501, "number attribute in <start> element must be even valued"));
-			} else {
-				handleStartChannelRequest(request, handler);
-			}
-			
-		} else if (r instanceof CloseChannelMessage) {
-			final CloseChannelMessage request = (CloseChannelMessage) r;
-			
-			if (request.getChannelNumber() == 0) {
-				LOG.info("session close requested");
-				manager.sessionCloseRequested(new CloseCallback() {
-					public void closeDeclined(int code, String message) {
-						LOG.info("close of session declined by framework: "
-								+ code + ",'" + message + "'");
-						handler.sendERR(
-								builder.createError(createMessageBuilder(), code, message));
-					}
-				
-					public void closeAccepted() {
-						LOG.info("close of session accepted by framework");
-						handler.sendRPY(builder.createOk(createMessageBuilder()));
-					}
-				});
-				
-			} else {
-				LOG.info("close of channel " + request.getChannelNumber() + " requested");
-				manager.channelCloseRequested(request.getChannelNumber(), new CloseChannelRequest() {
-					public void reject() {
-						LOG.info("close of channel " + request.getChannelNumber()
-								+ " declined by application");
-						handler.sendERR(builder.createError(
-								createMessageBuilder(), 550, "still working"));
-					}
-					public void accept() {
-						LOG.info("close of channel " + request.getChannelNumber()
-								+ " accepted by application");
-						handler.sendRPY(builder.createOk(createMessageBuilder()));
-					}
-				});
-			}
-			
-		} else {
-			throw new RuntimeException("unexpected code path");
-		}
-	}
-
-	private void handleStartChannelRequest(StartChannelMessage request, Reply handler) {
-		StartChannelResponse response = manager.channelStartRequested(
-				request.getChannelNumber(), request.getProfiles());			
-		
-		if (response.isCancelled()) {
-			LOG.info("start channel request is cancelled by application: "
-					+ response.getCode() + "," + response.getMessage());
-			handler.sendERR(builder.createError(
-					createMessageBuilder(), response.getCode(), response.getMessage()));
-			
-		} else {
-			LOG.info("start channel request is accepted by application: "
-					+ response.getProfile().getUri());
-			handler.sendRPY(builder.createProfile(
-					createMessageBuilder(), response.getProfile()));
-		}
-	}
-	
-	public void channelCloseRequested(CloseChannelRequest request) {
-		throw new UnsupportedOperationException("unexpected code path");
-	}
-	
-	public void channelClosed() {
-		this.channel = null;
-	}
-	
-	// --> end of ChannelHandler methods <--
-	
-	
-	// --> start of ChannelManagementProfile methods <--
-	
 	public ChannelHandler createChannelHandler(SessionManager manager) {
 		this.manager = manager;
-		return this;
+		return new ManagementChannelHandler(this, parser);
 	}
 	
 	public boolean connectionEstablished(
@@ -230,7 +113,7 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 	
 	public void startChannel(int channelNumber, ProfileInfo[] infos, final StartChannelCallback callback) {
 		Message message = builder.createStart(createMessageBuilder(), channelNumber, infos);
-		channel.sendMessage(message, new ReplyHandler() {
+		manager.sendMessage(message, new ReplyHandler() {
 		
 			public void receivedRPY(Message message) {
 				ProfileInfo profile = parser.parseProfile(message);
@@ -254,7 +137,7 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 	
 	public void closeChannel(int channelNumber, final CloseChannelCallback callback) {
 		Message message = builder.createClose(createMessageBuilder(), channelNumber, 200);
-		channel.sendMessage(message, new ReplyHandler() {
+		manager.sendMessage(message, new ReplyHandler() {
 		
 			public void receivedRPY(Message message) {
 				parser.parseOk(message);
@@ -279,7 +162,7 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 	
 	public void closeSession(final CloseCallback callback) {
 		Message message = builder.createClose(createMessageBuilder(), 0, 200);
-		channel.sendMessage(message, new ReplyHandler() {
+		manager.sendMessage(message, new ReplyHandler() {
 		
 			public void receivedRPY(Message message) {
 				parser.parseOk(message);
@@ -299,6 +182,69 @@ public class ChannelManagementProfileImpl implements ChannelHandler, ChannelMana
 				throw new ProtocolException("NUL message not valid response for close session request");
 			}
 		
+		});
+	}
+	
+	public void startChannelRequested(final int channelNumber, final ProfileInfo[] profiles, final Reply reply) {
+		// first validate the request, throw a ProtocolException if it fails
+		validateStartChannelRequest(channelNumber, reply); 
+
+		StartChannelResponse response = manager.channelStartRequested(channelNumber, profiles);			
+		
+		if (response.isCancelled()) {
+			LOG.debug("start channel request is cancelled by application: "
+					+ response.getCode() + "," + response.getMessage());
+			reply.sendERR(builder.createError(
+					createMessageBuilder(), response.getCode(), response.getMessage()));
+			
+		} else {
+			LOG.debug("start channel request is accepted by application: "
+					+ response.getProfile().getUri());
+			reply.sendRPY(builder.createProfile(
+					createMessageBuilder(), response.getProfile()));
+		}
+	}
+
+	private void validateStartChannelRequest(final int channelNumber,
+			final Reply reply) {
+		// validate start channel request
+		if (initiator && channelNumber % 2 != 0) {
+			LOG.warn("received invalid start channel request: number attribute in <start> element must be " 
+					+ "odd valued (was=" + channelNumber + ")");
+			reply.sendERR(builder.createError(
+					createMessageBuilder(), 501, "number attribute in <start> element must be odd valued"));
+		} else if (!initiator && channelNumber % 2 != 1) {
+			LOG.warn("received invalid start channel request: number attribute in <start> element must be "
+					+ "even valued (was=" + channelNumber + ")");
+			reply.sendERR(builder.createError(
+					createMessageBuilder(), 501, "number attribute in <start> element must be even valued"));
+		}
+	}
+
+	public void closeChannelRequested(final int channelNumber, final Reply reply) {
+		DefaultCloseChannelRequest request = new DefaultCloseChannelRequest();
+		manager.channelCloseRequested(channelNumber, request);
+		if (request.isAccepted()) {
+			reply.sendRPY(builder.createOk(createMessageBuilder()));
+		} else {
+			reply.sendERR(builder.createError(createMessageBuilder(), 550, "still working"));
+		}
+	}
+
+	public void closeSessionRequested(final Reply reply) {
+		LOG.debug("session close requested");
+		manager.sessionCloseRequested(new CloseCallback() {
+			public void closeDeclined(int code, String message) {
+				LOG.debug("close of session declined by framework: "
+						+ code + ",'" + message + "'");
+				reply.sendERR(
+						builder.createError(createMessageBuilder(), code, message));
+			}
+		
+			public void closeAccepted() {
+				LOG.debug("close of session accepted by framework");
+				reply.sendRPY(builder.createOk(createMessageBuilder()));
+			}
 		});
 	}
 	

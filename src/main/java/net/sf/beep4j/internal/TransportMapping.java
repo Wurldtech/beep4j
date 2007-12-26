@@ -15,7 +15,6 @@
  */
 package net.sf.beep4j.internal;
 
-import net.sf.beep4j.Message;
 
 /**
  * A TransportMapping implements a transport mapping as described by
@@ -33,7 +32,7 @@ import net.sf.beep4j.Message;
  * 
  * @author Simon Raess
  */
-public interface TransportMapping extends SessionListener {
+public interface TransportMapping extends BeepStream {
 	
 	/**
 	 * Process a mapping frame. This method receives the header tokens.
@@ -66,55 +65,5 @@ public interface TransportMapping extends SessionListener {
 	 * @param size the size of the message
 	 */
 	void frameReceived(int channel, long seqno, int size);
-	
-	/**
-	 * Sends a message of type MSG.
-	 * 
-	 * @param channel the channel number
-	 * @param messageNumber the message number
-	 * @param message the message
-	 */
-	void sendMSG(int channel, int messageNumber, Message message);
-
-	/**
-	 * Sends a message of type RPY.
-	 * 
-	 * @param channel the channel number
-	 * @param messageNumber the message number
-	 * @param message the message
-	 */
-	void sendRPY(int channel, int messageNumber, Message message);
-	
-	/**
-	 * Sends a message of type ERR.
-	 * 
-	 * @param channel the channel number
-	 * @param messageNumber the message number
-	 * @param message the message
-	 */
-	void sendERR(int channel, int messageNumber, Message message);
-	
-	/**
-	 * Sends a message of type ANS.
-	 * 
-	 * @param channel the channel number
-	 * @param messageNumber the message number
-	 * @param message the message
-	 */
-	void sendANS(int channel, int messageNumber, int answerNumber, Message message);
-	
-	/**
-	 * Sends a message of type NUL.
-	 * 
-	 * @param channel the channel number
-	 * @param messageNumber the message number
-	 * @param message the message
-	 */
-	void sendNUL(int channel, int messageNumber);
-	
-	/**
-	 * Instructs the mapping to close the underlying Transport object.
-	 */
-	void closeTransport();
-	
+		
 }

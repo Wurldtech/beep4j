@@ -89,7 +89,6 @@ public class SessionImplTest extends MockObjectTestCase {
 		mappingMock.expects(once()).method("channelStarted").with(eq(0));
 		profileMock.expects(once()).method("createChannelHandler").with(ANYTHING).will(returnValue(channelHandler));
 		profileMock.expects(once()).method("receivedGreeting").with(same(greeting));
-		channelHandlerMock.expects(once()).method("channelOpened").with(ANYTHING);
 		channelHandlerMock.expects(once()).method("messageReceived").with(same(message), ANYTHING);
 		sessionHandlerMock.expects(once()).method("sessionOpened").with(ANYTHING);
 
@@ -115,7 +114,6 @@ public class SessionImplTest extends MockObjectTestCase {
 		mappingMock.expects(once()).method("channelStarted").with(eq(0));
 		mappingMock.expects(once()).method("closeTransport");
 		profileMock.expects(once()).method("createChannelHandler").with(ANYTHING).will(returnValue(channelHandler));
-		channelHandlerMock.expects(once()).method("channelOpened").with(ANYTHING);
 		sessionHandlerMock.expects(once()).method("sessionStartDeclined")
 				.with(eq(550), eq("still working"));
 		profileMock.expects(once()).method("receivedError")
@@ -142,7 +140,6 @@ public class SessionImplTest extends MockObjectTestCase {
 		// define expectations
 		mappingMock.expects(once()).method("channelStarted").with(eq(0));
 		profileMock.expects(once()).method("createChannelHandler").with(ANYTHING).will(returnValue(channelHandler));
-		channelHandlerMock.expects(once()).method("channelOpened").with(ANYTHING);
 		profileMock.expects(once()).method("receivedGreeting")
 				.with(same(message))
 				.will(returnValue(new Greeting(new String[0], new String[0], new String[] { "abc" })));
@@ -174,7 +171,6 @@ public class SessionImplTest extends MockObjectTestCase {
 		sessionHandlerMock.expects(once()).method("sessionOpened").with(ANYTHING);
 		mappingMock.expects(once()).method("channelStarted").with(eq(0));
 		profileMock.expects(once()).method("createChannelHandler").with(ANYTHING).will(returnValue(channelHandler));
-		channelHandlerMock.expects(once()).method("channelOpened").with(ANYTHING);
 		profileMock.expects(once()).method("receivedGreeting")
 				.with(same(greeting))
 				.will(returnValue(new Greeting(new String[0], new String[0], new String[] { "abc" })));
@@ -285,7 +281,6 @@ public class SessionImplTest extends MockObjectTestCase {
 		// define expectations
 		mappingMock.expects(once()).method("channelStarted").with(eq(0));
 		profileMock.expects(once()).method("createChannelHandler").with(ANYTHING).will(returnValue(channelHandler));
-		channelHandlerMock.expects(once()).method("channelOpened").with(ANYTHING);
 		profileMock.expects(once()).method("closeChannel").with(eq(0), ANYTHING);
 
 		// test

@@ -164,7 +164,7 @@ public class SaxMessageParser implements ChannelManagementMessageParser {
 				}
 				copy.removeLast();
 			}
-			return null;
+			throw new ProtocolException("no handler found for current path: " + path);
 		}
 		
 		private String toString(List<String> path) {

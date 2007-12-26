@@ -1,3 +1,49 @@
+- CloseChannelRequest
+  - currently implemented so that method calls immediately result to actions on the channel
+  - reimplement the same way as StartChannelRequest is implemented
+  - i.e. the result of the request is processed after the call to the ChannelHandler returns
+  - this will simplify the implementation of synchronization on the session layer
+
+- testing
+  - sequencing of state transitions and handler callbacks
+
+- refactor to show clear layer structure
+  - stream layer
+    - is responsible to process the incoming byte stream as well as the transport mapping
+    - StreamParser
+    - FrameHandler
+    - TransportMapping
+    - MessageAssembler
+  - session layer
+    - is responsible to dispatch messages to the correct handlers in the client application
+    - is responsible to send messages from the application to the underlying layer
+    - works with messages
+    - SessionImpl
+    - ChannelImpl
+    - ChannelManagementProfile
+  - note: the stream layer needs to know when channels are created / destroyed to
+          update its internal structures (namely, there is one FrameHandler per channel)
+
+- synchronizing stream layer
+  - the stream layer needs to be synchronized
+  - do not call session / transport layer while holding locks
+  - is synchronization possible on a class level?
+  - clear layer interface to session layer
+    - BeepStream: used by session layer to send messages and close transport
+    - X: used by stream layer to talk to session layer (MessageHandler + TransportHandler)
+    - Transport: used by stream layer to talk to underlying transport layer
+    - TransportContext: used by transport layer to talk to the stream layer
+
+- ChannelManagementProfile
+  - review whether it makes sense to implement it kind of like a real profile
+  - probably implement it just as integral part of the session layer
+  - this will reduce unecessary locking / unlocking of the session
+
+- CloseChannelCallback vs. Future
+  - Channel#close(:CloseChannelCallback):void
+  - Channel#close():Future<Boolean>
+  - additionally, ChannelHandler#channelClosed() is called whenever a channel is closed
+
 - synchronization
   - currently, all external access to the session is synchronized
   - however, beep4j calls application code (handlers) while still holding
@@ -9,7 +55,7 @@
   - allow handlers to throw any exception?
   - catch exceptions and
     - terminate session?
-    - delegate back to the handlers?
+    - delegate back to the handlers? i.e. ChannelHandler#exceptionCaught?
 
 - ChannelFilter
   - same as IoFilter in MINA
@@ -50,7 +96,7 @@
 - support Content-Transfer-Encoding: base64, (quoted-printable)
   
 - general review of exception handling
-    
+
 - GenericSessionHandler -> SessionHandler
   - factory:ChannelHandlerFactory
   - advertisedProfiles:String[]

@@ -61,7 +61,7 @@ public class TCPMapping implements TransportMapping, ChannelControllerFactory {
 	
 	// --> start of SessionListener methods <--
 	
-	public void channelStarted(int channelNumber) {
+	public synchronized void channelStarted(int channelNumber) {
 		if (channels.containsKey(channelNumber)) {
 			throw new IllegalArgumentException("there is already a channel for channel number: " 
 					+ channelNumber);
@@ -70,7 +70,7 @@ public class TCPMapping implements TransportMapping, ChannelControllerFactory {
 		channels.put(channelNumber, controller);
 	}
 	
-	public void channelClosed(int channelNumber) {
+	public synchronized void channelClosed(int channelNumber) {
 		channels.remove(channelNumber);
 	}
 	
@@ -110,6 +110,11 @@ public class TCPMapping implements TransportMapping, ChannelControllerFactory {
 		getChannelController(channel).updateSendWindow(ackno, size);
 	}
 	
+	// --> end of TransportMapping methods <--
+	
+	
+	// --> start of BeepStream methods <--
+	
 	public void sendANS(int channel, int messageNumber, int answerNumber, Message message) {
 		getChannelController(channel).sendANS(messageNumber, answerNumber, message);
 	}
@@ -134,10 +139,10 @@ public class TCPMapping implements TransportMapping, ChannelControllerFactory {
 		transport.closeTransport();
 	}
 	
-	// --> end of TransportMapping methods <--
+	// --> end of BeepStream methods <--
 	
 				
-	private ChannelController getChannelController(int channel) {
+	private synchronized ChannelController getChannelController(int channel) {
 		ChannelController controller = channels.get(new Integer(channel));
 		if (controller == null) {
 			throw new ProtocolException("unknown channel: " + channel);

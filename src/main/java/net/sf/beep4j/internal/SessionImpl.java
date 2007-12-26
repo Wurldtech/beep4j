@@ -85,7 +85,7 @@ public class SessionImpl
 	
 	private final ChannelManagementProfile channelManagementProfile;
 	
-	private final TransportMapping mapping;
+	private final BeepStream mapping;
 	
 	private final SessionHandler sessionHandler;
 	
@@ -110,7 +110,7 @@ public class SessionImpl
 	 */
 	private Greeting greeting;
 	
-	public SessionImpl(boolean initiator, SessionHandler sessionHandler, TransportMapping mapping) {
+	public SessionImpl(boolean initiator, SessionHandler sessionHandler, BeepStream mapping) {
 		Assert.notNull("sessionHandler", sessionHandler);
 		Assert.notNull("mapping", mapping);
 		
@@ -138,15 +138,10 @@ public class SessionImpl
 
 	protected void initChannelManagementProfile() {
 		ChannelHandler channelHandler = channelManagementProfile.createChannelHandler(this);
-		InternalChannel channel = createChannel(this, "", 0);
-		channelHandler = initChannel(channel, channelHandler);
-		lock();
-		try {
-			channelHandler.channelOpened(channel);
-		} finally {
-			unlock();
-		}
-		registerChannel(0, channel, channelHandler);
+		
+		// we are never using the Channel object for the management profile
+		// so we'll just pass null as this won't be a problem
+		registerChannel(0, null, channelHandler);
 	}
 		
 	protected InternalChannel createChannel(InternalSession session, String profileUri, int channelNumber) {
@@ -157,7 +152,7 @@ public class SessionImpl
 		return new ChannelHandlerWrapper(channel.initChannel(handler));
 	}
 
-	protected Reply createReply(TransportMapping mapping, int channelNumber, int messageNumber) {
+	protected Reply createReply(BeepStream mapping, int channelNumber, int messageNumber) {
 		Reply responseHandler = new DefaultReply(mapping, channelNumber, messageNumber);
 		setReply(channelNumber, messageNumber, responseHandler);
 		return responseHandler;
@@ -495,16 +490,15 @@ public class SessionImpl
 	public void channelCloseRequested(final int channelNumber, final CloseChannelRequest request) {
 		lock();
 		try {
+			DefaultCloseChannelRequest closeRequest = new DefaultCloseChannelRequest();
 			ChannelHandler handler = getChannelHandler(channelNumber);
-			handler.channelCloseRequested(new CloseChannelRequest() {
-				public void reject() {
-					request.reject();
-				}		
-				public void accept() {
-					request.accept();
-					unregisterChannel(channelNumber);
-				}
-			});
+			handler.channelCloseRequested(closeRequest);
+			if (closeRequest.isAccepted()) {
+				request.accept();
+				unregisterChannel(channelNumber);
+			} else {
+				request.reject();
+			}
 		} finally {
 			unlock();
 		}
@@ -517,6 +511,10 @@ public class SessionImpl
 		} finally {
 			unlock();
 		}
+	}
+	
+	public void sendMessage(Message message, ReplyHandler reply) {
+		sendMessage(0, message, reply);
 	}
 	
 	// --> end of SessionManager methods <--
@@ -954,7 +952,7 @@ public class SessionImpl
 			debug("start of channel ", channelNumber, " is accepted by application: ", info.getUri());
 			
 			InternalChannel channel = createChannel(SessionImpl.this, info.getUri(), channelNumber);
-			ChannelHandler handler = channel.initChannel(response.getChannelHandler());
+			ChannelHandler handler = initChannel(channel, response.getChannelHandler());
 			handler.channelOpened(channel);
 			registerChannel(channelNumber, channel, handler);
 			
@@ -1133,7 +1131,7 @@ public class SessionImpl
 	
 	protected class DefaultReply implements Reply {
 		
-		private final TransportMapping mapping;
+		private final BeepStream mapping;
 		
 		private final int channel;
 		
@@ -1143,7 +1141,7 @@ public class SessionImpl
 		
 		private boolean complete;
 		
-		public DefaultReply(TransportMapping mapping, int channel, int messageNumber) {
+		public DefaultReply(BeepStream mapping, int channel, int messageNumber) {
 			Assert.notNull("mapping", mapping);
 			this.mapping = mapping;
 			this.channel = channel;
@@ -1215,7 +1213,7 @@ public class SessionImpl
 	
 	protected class InitialReply extends DefaultReply {
 		
-		public InitialReply(TransportMapping mapping) {
+		public InitialReply(BeepStream mapping) {
 			super(mapping, 0, 0);
 		}
 		
