@@ -15,15 +15,10 @@
  */
 package net.sf.beep4j.internal.profile;
 
-import java.net.SocketAddress;
-
 import net.sf.beep4j.ChannelHandler;
-import net.sf.beep4j.CloseChannelCallback;
 import net.sf.beep4j.Message;
 import net.sf.beep4j.ProfileInfo;
 import net.sf.beep4j.Reply;
-import net.sf.beep4j.SessionHandler;
-import net.sf.beep4j.internal.CloseCallback;
 import net.sf.beep4j.internal.SessionManager;
 
 /**
@@ -37,7 +32,8 @@ public interface ChannelManagementProfile {
 	
 	/**
 	 * Invoked by the framework to initialize the channel and to get
-	 * the ChannelHandler for the profile.
+	 * the ChannelHandler for the profile. The ChannelHandler is
+	 * only used to receive messages.
 	 * 
 	 * @param manager the SessionManager to be used by the profile
 	 * @return the ChannelHandler for the profile
@@ -45,18 +41,21 @@ public interface ChannelManagementProfile {
 	ChannelHandler createChannelHandler(SessionManager manager);
 	
 	/**
-	 * Invoked by the session when the connection has been established.
-	 * The profile must pass this event to the SessionHandler. Depending
-	 * on the response of the application, either a greeting or an
-	 * error is sent to the ResponseHandler.
-	 * @param address address of remote peer
-	 * @param handler the SessionHandler of the session
-	 * @param response the ResponseHandler to be used to generate a response
+	 * Sends a message that starting the session is declined.
 	 * 
-	 * @return true iff the connection is established. Returning false from
-	 *              this method will drop the connection.
+	 * @param errorCode the error code given by the local application
+	 * @param message the error message given by the local application
+	 * @param reply the reply needed to send the initial ERR message
 	 */
-	boolean connectionEstablished(SocketAddress address, SessionHandler handler, Reply response);
+	void sendSessionStartDeclined(int errorCode, String message, Reply reply);
+	
+	/**
+	 * Sends a greeting message to the remote peer.
+	 * 
+	 * @param profiles the set of supported profiles by this peer
+	 * @param reply the reply needed to send the initial RPY message
+	 */
+	void sendGreeting(String[] profiles, Reply reply);
 
 	/**
 	 * Invoked by the session when a greeting has been received during
@@ -95,7 +94,7 @@ public interface ChannelManagementProfile {
 	 * @param channelNumber the channel to be closed
 	 * @param callback the callback that is invoked when the response is received
 	 */
-	void closeChannel(int channelNumber, CloseChannelCallback callback);
+	void closeChannel(int channelNumber, CloseCallback callback);
 	
 	/**
 	 * Closes the session. The BEEP specification notes that it is possible

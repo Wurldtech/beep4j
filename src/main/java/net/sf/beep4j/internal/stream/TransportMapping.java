@@ -13,7 +13,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal;
+package net.sf.beep4j.internal.stream;
+
 
 
 /**
@@ -32,7 +33,7 @@ package net.sf.beep4j.internal;
  * 
  * @author Simon Raess
  */
-public interface TransportMapping extends BeepStream {
+public interface TransportMapping {
 	
 	/**
 	 * Process a mapping frame. This method receives the header tokens.

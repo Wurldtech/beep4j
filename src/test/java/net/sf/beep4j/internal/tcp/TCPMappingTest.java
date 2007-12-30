@@ -18,7 +18,6 @@ package net.sf.beep4j.internal.tcp;
 import junit.framework.TestCase;
 import net.sf.beep4j.Message;
 import net.sf.beep4j.MessageStub;
-import net.sf.beep4j.internal.TransportMapping;
 import net.sf.beep4j.transport.Transport;
 
 import org.easymock.MockControl;
@@ -63,7 +62,7 @@ public class TCPMappingTest extends TestCase {
 	}
 	
 	public void testReceiveFrame() throws Exception {
-		TransportMapping mapping = new TCPMapping(transport, factory);
+		TCPMapping mapping = new TCPMapping(transport, factory);
 		
 		// define expectations
 		controller.checkFrame(0, 50);
@@ -79,7 +78,7 @@ public class TCPMappingTest extends TestCase {
 	}
 	
 	public void testProcessMappingFrame() throws Exception {
-		TransportMapping mapping = new TCPMapping(transport, factory, 50);
+		TCPMapping mapping = new TCPMapping(transport, factory, 50);
 		
 		// define expectations
 		controller.updateSendWindow(0, 4096);
@@ -93,7 +92,7 @@ public class TCPMappingTest extends TestCase {
 	}
 	
 	public void testStartCloseChannel() throws Exception {
-		TransportMapping mapping = new TCPMapping(transport, factory);
+		TCPMapping mapping = new TCPMapping(transport, factory);
 		
 		// define expectations
 		replay();
@@ -115,7 +114,7 @@ public class TCPMappingTest extends TestCase {
 	}
 	
 	public void testSendANS() throws Exception {
-		TransportMapping mapping = new TCPMapping(transport, factory);
+		TCPMapping mapping = new TCPMapping(transport, factory);
 		Message message = new MessageStub();
 		
 		// define expectations
@@ -131,7 +130,7 @@ public class TCPMappingTest extends TestCase {
 	}
 
 	public void testSendNUL() throws Exception {
-		TransportMapping mapping = new TCPMapping(transport, factory);
+		TCPMapping mapping = new TCPMapping(transport, factory);
 		
 		// define expectations
 		controller.sendNUL(0);
@@ -146,7 +145,7 @@ public class TCPMappingTest extends TestCase {
 	}
 	
 	public void testSendERR() throws Exception {
-		TransportMapping mapping = new TCPMapping(transport, factory);
+		TCPMapping mapping = new TCPMapping(transport, factory);
 		Message message = new MessageStub();
 		
 		// define expectations
@@ -162,7 +161,7 @@ public class TCPMappingTest extends TestCase {
 	}
 	
 	public void testSendMSG() throws Exception {
-		TransportMapping mapping = new TCPMapping(transport, factory);
+		TCPMapping mapping = new TCPMapping(transport, factory);
 		Message message = new MessageStub();
 		
 		// define expectations
@@ -178,7 +177,7 @@ public class TCPMappingTest extends TestCase {
 	}
 	
 	public void testSendRPY() throws Exception {
-		TransportMapping mapping = new TCPMapping(transport, factory);
+		TCPMapping mapping = new TCPMapping(transport, factory);
 		Message message = new MessageStub();
 		
 		// define expectations
@@ -194,7 +193,7 @@ public class TCPMappingTest extends TestCase {
 	}
 	
 	public void testCloseTransport() throws Exception {
-		TransportMapping mapping = new TCPMapping(transport, factory);
+		TCPMapping mapping = new TCPMapping(transport, factory);
 		
 		// define expectations
 		transport.closeTransport();

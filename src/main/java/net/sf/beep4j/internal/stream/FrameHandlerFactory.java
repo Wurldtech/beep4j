@@ -13,21 +13,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal;
-
+package net.sf.beep4j.internal.stream;
 
 /**
- * Handler interface for frames parsed by the StreamParser.
+ * Factory for {@link FrameHandler} objects.
  * 
  * @author Simon Raess
  */
-public interface FrameHandler {
+public interface FrameHandlerFactory {
 	
-	/**
-	 * Handle a single frame.
-	 * 
-	 * @param frame the Frame to be processed
-	 */
-	void handleFrame(Frame frame);
+	FrameHandler createFrameHandler();
 	
 }

@@ -13,12 +13,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal;
+package net.sf.beep4j.internal.stream;
 
 import java.nio.ByteBuffer;
 
 import junit.framework.TestCase;
-import net.sf.beep4j.internal.DataHeader.ANSHeader;
+import net.sf.beep4j.internal.stream.DataHeader;
+import net.sf.beep4j.internal.stream.Frame;
+import net.sf.beep4j.internal.stream.MessageAssembler;
+import net.sf.beep4j.internal.stream.MessageHandler;
+import net.sf.beep4j.internal.stream.MessageType;
+import net.sf.beep4j.internal.stream.DataHeader.ANSHeader;
 
 import org.easymock.MockControl;
 

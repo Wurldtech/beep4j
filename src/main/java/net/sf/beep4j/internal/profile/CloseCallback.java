@@ -13,10 +13,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal;
+package net.sf.beep4j.internal.profile;
 
-public enum MessageType {
+public interface CloseCallback {
 	
-	MSG, ANS, NUL, RPY, ERR
-
+	void closeAccepted();
+	
+	void closeDeclined(int code, String message);
+	
 }

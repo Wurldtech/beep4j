@@ -13,12 +13,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal;
+package net.sf.beep4j.internal.stream;
 
-public interface CloseCallback {
+
+/**
+ * Handler interface for frames parsed by the StreamParser.
+ * 
+ * @author Simon Raess
+ */
+public interface FrameHandler {
 	
-	void closeAccepted();
-	
-	void closeDeclined(int code, String message);
+	/**
+	 * Handle a single frame.
+	 * 
+	 * @param frame the Frame to be processed
+	 */
+	void handleFrame(Frame frame);
 	
 }

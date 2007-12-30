@@ -35,6 +35,8 @@ import net.sf.beep4j.StartSessionRequest;
 import net.sf.beep4j.internal.message.DefaultMessageBuilder;
 import net.sf.beep4j.internal.profile.ChannelManagementMessageBuilder;
 import net.sf.beep4j.internal.profile.SaxMessageBuilder;
+import net.sf.beep4j.internal.stream.BeepStream;
+import net.sf.beep4j.internal.stream.MessageHandler;
 
 import org.jmock.Mock;
 import org.jmock.MockObjectTestCase;
@@ -49,21 +51,21 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 	
 	private SessionHandler sessionHandler;
 	
-	private Mock transportMappingMock;
+	private Mock beepStreamMock;
 	
-	private TransportMapping transportMapping;
+	private BeepStream beepStream;
 	
 	@Override
 	protected void setUp() throws Exception {
 		sessionHandlerMock = mock(SessionHandler.class);
 		sessionHandler = (SessionHandler) sessionHandlerMock.proxy();
-		transportMappingMock = mock(TransportMapping.class);
-		transportMapping = (TransportMapping) transportMappingMock.proxy();
+		beepStreamMock = mock(BeepStream.class);
+		beepStream = (BeepStream) beepStreamMock.proxy();
 		setupTransportMapping();
 	}
 	
 	private void setupTransportMapping() {
-		transportMappingMock.expects(once()).method("channelStarted").with(eq(0));
+		beepStreamMock.expects(once()).method("channelStarted").with(eq(0));
 	}
 
 	/*
@@ -73,10 +75,10 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 		Stub rejector = new StartSessionRequestRejector(); 
 		
 		sessionHandlerMock.expects(once()).method("connectionEstablished").will(rejector);
-		transportMappingMock.expects(once()).method("sendERR").with(eq(0), eq(0), eq(createErrorMessage(421, "service not available")));
-		transportMappingMock.expects(once()).method("closeTransport");
+		beepStreamMock.expects(once()).method("sendERR").with(eq(0), eq(0), eq(createErrorMessage(421, "service not available")));
+		beepStreamMock.expects(once()).method("closeTransport");
 		
-		SessionImpl session = new SessionImpl(false, sessionHandler, transportMapping);
+		SessionImpl session = new SessionImpl(false, sessionHandler, beepStream);
 		session.connectionEstablished(null);
 	}
 	
@@ -88,11 +90,11 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 		
 		sessionHandlerMock.expects(once()).method("connectionEstablished").will(acceptor);
 		sessionHandlerMock.expects(once()).method("sessionStartDeclined").with(eq(550), eq("listener not available"));
-		transportMappingMock.expects(once()).method("sendRPY")
+		beepStreamMock.expects(once()).method("sendRPY")
 				.with(eq(0), eq(0), eq(createGreetingMessage(new String[] { PROFILE })));
-		transportMappingMock.expects(once()).method("closeTransport");
+		beepStreamMock.expects(once()).method("closeTransport");
 		
-		SessionImpl session = new SessionImpl(true, sessionHandler, transportMapping);
+		SessionImpl session = new SessionImpl(true, sessionHandler, beepStream);
 		session.connectionEstablished(null);
 		session.receiveERR(0, 0, createErrorMessage(550, "listener not available"));
 	}
@@ -200,7 +202,7 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 		
 		Mock callbackMock = mock(CloseChannelCallback.class);
 		CloseChannelCallback callback = (CloseChannelCallback) callbackMock.proxy();
-		requestChannelClose(transportMappingMock, channel.channel, callback, 1, 1);
+		requestChannelClose(beepStreamMock, channel.channel, callback, 1, 1);
 		
 		// close requested and immediately accepted without calling back the application
 		Message request = createCloseMessage(1);		
@@ -208,9 +210,9 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 		
 		callbackMock.expects(once()).method("closeAccepted");
 		channel.channelHandlerMock.expects(once()).method("channelClosed");
-		transportMappingMock.expects(once()).method("sendRPY")
+		beepStreamMock.expects(once()).method("sendRPY")
 				.with(eq(0), eq(1), eq(reply));
-		transportMappingMock.expects(once()).method("channelClosed")
+		beepStreamMock.expects(once()).method("channelClosed")
 				.with(eq(1));
 		session.receiveMSG(0, 1, request);
 	}
@@ -251,19 +253,19 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 		SessionImpl session = openSession(false, new String[] { PROFILE }, new String[0]);
 		initiateCloseSession(session, 1);
 		
-		transportMappingMock.expects(once()).method("sendRPY")
+		beepStreamMock.expects(once()).method("sendRPY")
 				.with(eq(0), eq(1), eq(createOkMessage()));
-		transportMappingMock.expects(once()).method("closeTransport");
+		beepStreamMock.expects(once()).method("closeTransport");
 		sessionHandlerMock.expects(once()).method("sessionClosed");
 		
 		session.receiveMSG(0, 1, createCloseMessage(0));
 	}
 
 	private SessionImpl openSession(boolean initiator, String[] profiles, String[] remoteProfiles) {
-		transportMappingMock.expects(once()).method("sendRPY")
+		beepStreamMock.expects(once()).method("sendRPY")
 				.with(eq(0), eq(0), eq(createGreetingMessage(profiles)));
 
-		SessionImpl session = new SessionImpl(initiator, sessionHandler, transportMapping);
+		SessionImpl session = new SessionImpl(initiator, sessionHandler, beepStream);
 
 		Stub acceptor = new StartSessionRequestAcceptor(profiles);
 		
@@ -284,9 +286,9 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 				new ParameterCaptureStub<Channel>(0, Channel.class, null);
 		channelHandlerMock.expects(once()).method("channelOpened").with(ANYTHING).will(channelExtractor);
 		
-		transportMappingMock.expects(once()).method("sendMSG")
+		beepStreamMock.expects(once()).method("sendMSG")
 				.with(eq(0), eq(1), eq(createStartMessage(1, new ProfileInfo[] { new ProfileInfo(PROFILE) })));
-		transportMappingMock.expects(once()).method("channelStarted").with(eq(1));
+		beepStreamMock.expects(once()).method("channelStarted").with(eq(1));
 		session.startChannel(PROFILE, channelHandler);
 		session.receiveRPY(0, 1, createProfileMessage(new ProfileInfo(PROFILE)));
 		
@@ -305,9 +307,9 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 				.with(ANYTHING)
 				.will(acceptor);
 		
-		transportMappingMock.expects(once()).method("channelStarted")
+		beepStreamMock.expects(once()).method("channelStarted")
 				.with(eq(channelNumber));
-		transportMappingMock.expects(once()).method("sendRPY")
+		beepStreamMock.expects(once()).method("sendRPY")
 				.with(eq(0), eq(messageNumber), eq(createProfileMessage(profile)));
 		
 		ParameterCaptureStub<Channel> channelExtractor = 
@@ -325,7 +327,7 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 		
 		sessionHandlerMock.expects(once()).method("channelStartRequested")
 				.with(ANYTHING).will(stub);
-		transportMappingMock.expects(once()).method("sendERR")
+		beepStreamMock.expects(once()).method("sendERR")
 				.with(eq(0), eq(messageNumber), eq(createErrorMessage(550, "no profiles supported")));
 		session.receiveMSG(0, messageNumber, createStartMessage(channelNumber, profiles));		
 	}
@@ -334,7 +336,7 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 		Mock channelHandlerMock = mock(ChannelHandler.class);
 		ChannelHandler channelHandler = (ChannelHandler) channelHandlerMock.proxy();
 		
-		transportMappingMock.expects(once()).method("sendMSG")
+		beepStreamMock.expects(once()).method("sendMSG")
 				.with(eq(0), eq(messageNumber), eq(createStartMessage(channelNumber, profiles)));
 		channelHandlerMock.expects(once()).method("channelStartFailed")
 				.with(eq(550), eq("no profiles supported"));
@@ -348,12 +350,12 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 		Mock closeChannelCallbackMock = mock(CloseChannelCallback.class);
 		CloseChannelCallback closeChannelCallback = (CloseChannelCallback) closeChannelCallbackMock.proxy();
 		
-		transportMappingMock.expects(once()).method("sendMSG")
+		beepStreamMock.expects(once()).method("sendMSG")
 				.with(eq(0), eq(messageNumber), eq(createCloseMessage(channelNumber)));
 		channel.channel.close(closeChannelCallback);
 		
 		channel.channelHandlerMock.expects(once()).method("channelClosed");
-		transportMappingMock.expects(once()).method("channelClosed").with(eq(channelNumber));
+		beepStreamMock.expects(once()).method("channelClosed").with(eq(channelNumber));
 		closeChannelCallbackMock.expects(once()).method("closeAccepted");
 		session.receiveRPY(0, messageNumber, createOkMessage());
 	}
@@ -363,7 +365,7 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 		Mock closeChannelCallbackMock = mock(CloseChannelCallback.class);
 		CloseChannelCallback closeChannelCallback = (CloseChannelCallback) closeChannelCallbackMock.proxy();
 		
-		transportMappingMock.expects(once()).method("sendMSG")
+		beepStreamMock.expects(once()).method("sendMSG")
 				.with(eq(0), eq(messageNumber), eq(createCloseMessage(channelNumber)));
 		channel.channel.close(closeChannelCallback);
 		
@@ -395,9 +397,9 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 		channel.channelHandlerMock.expects(once()).method("channelCloseRequested")
 				.with(ANYTHING).will(closeChannelAcceptor);
 		channel.channelHandlerMock.expects(once()).method("channelClosed");
-		transportMappingMock.expects(once()).method("sendRPY")
+		beepStreamMock.expects(once()).method("sendRPY")
 				.with(eq(0), eq(messageNumber), eq(reply));
-		transportMappingMock.expects(once()).method("channelClosed")
+		beepStreamMock.expects(once()).method("channelClosed")
 				.with(eq(1));
 		session.receiveMSG(0, messageNumber, request);
 	}
@@ -405,28 +407,28 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 	private void closeSession(SessionImpl session, int messageNumber) {
 		initiateCloseSession(session, messageNumber);
 		sessionHandlerMock.expects(once()).method("sessionClosed");
-		transportMappingMock.expects(once()).method("closeTransport");
+		beepStreamMock.expects(once()).method("closeTransport");
 		session.receiveRPY(0, messageNumber, createOkMessage());
 	}
 	
 	private void initiateCloseSession(SessionImpl session, int messageNumber) {
-		transportMappingMock.expects(once()).method("sendMSG")
+		beepStreamMock.expects(once()).method("sendMSG")
 				.with(eq(0), eq(messageNumber), eq(createCloseMessage(0)));
 		session.close();
 	}
 	
 	private void closeSessionRequested(SessionImpl session, int messageNumber) {
 		Message request = createCloseMessage(0);
-		transportMappingMock.expects(once()).method("sendRPY")
+		beepStreamMock.expects(once()).method("sendRPY")
 		        .with(eq(0), eq(messageNumber), eq(createOkMessage()));
-		transportMappingMock.expects(once()).method("closeTransport");
+		beepStreamMock.expects(once()).method("closeTransport");
 		sessionHandlerMock.expects(once()).method("sessionClosed");
 		session.receiveMSG(0, messageNumber, request);
 	}
 	
 	private void closeSessionRequestedReject(SessionImpl session, int messageNumber) {
 		Message request = createCloseMessage(0);
-		transportMappingMock.expects(once()).method("sendERR")
+		beepStreamMock.expects(once()).method("sendERR")
 		        .with(eq(0), eq(messageNumber), eq(createErrorMessage(550, "still working")));
 		session.receiveMSG(0, messageNumber, request);
 	}
@@ -436,7 +438,7 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 		ReplyHandler replyListener = (ReplyHandler) replyListenerMock.proxy();
 		
 		Message request = createEchoMessage(content);		
-		transportMappingMock.expects(once()).method("sendMSG")
+		beepStreamMock.expects(once()).method("sendMSG")
 				.with(eq(channelNumber), eq(messageNumber), same(request));
 		channel.sendMessage(request, replyListener);
 		
@@ -469,7 +471,7 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 		messageHandler.receiveMSG(channelNumber, messageNumber, request);
 		
 		Reply responseHandler = extractor.getParameter();		
-		transportMappingMock.expects(once()).method("sendRPY").with(eq(channelNumber), eq(messageNumber), same(reply));
+		beepStreamMock.expects(once()).method("sendRPY").with(eq(channelNumber), eq(messageNumber), same(reply));
 		responseHandler.sendRPY(reply);
 	}
 	

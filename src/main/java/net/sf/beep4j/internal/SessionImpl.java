@@ -45,8 +45,11 @@ import net.sf.beep4j.internal.message.DefaultMessageBuilder;
 import net.sf.beep4j.internal.profile.BEEPError;
 import net.sf.beep4j.internal.profile.ChannelManagementProfile;
 import net.sf.beep4j.internal.profile.ChannelManagementProfileImpl;
+import net.sf.beep4j.internal.profile.CloseCallback;
 import net.sf.beep4j.internal.profile.Greeting;
 import net.sf.beep4j.internal.profile.StartChannelCallback;
+import net.sf.beep4j.internal.stream.BeepStream;
+import net.sf.beep4j.internal.stream.MessageHandler;
 import net.sf.beep4j.internal.util.Assert;
 import net.sf.beep4j.internal.util.IntegerSequence;
 import net.sf.beep4j.internal.util.Sequence;
@@ -449,7 +452,7 @@ public class SessionImpl
 		Assert.notNull("callback", callback);
 		lock();
 		try {
-			channelManagementProfile.closeChannel(channelNumber, new CloseChannelCallback() {
+			channelManagementProfile.closeChannel(channelNumber, new CloseCallback() {
 				public void closeDeclined(int code, String message) {
 					callback.closeDeclined(code, message);
 				}
@@ -823,9 +826,16 @@ public class SessionImpl
 		public void connectionEstablished(SocketAddress address) {
 			Reply reply = new InitialReply(mapping);
 			setReply(0, 0, reply);
-			if (!channelManagementProfile.connectionEstablished(address, sessionHandler, reply)) {
+			
+			DefaultStartSessionRequest request = new DefaultStartSessionRequest(!initiator);
+			sessionHandler.connectionEstablished(request);
+			
+			if (request.isCancelled()) {
+				channelManagementProfile.sendSessionStartDeclined(request.getReplyCode(), request.getMessage(), reply);
 				setCurrentState(deadState);
 				mapping.closeTransport();
+			} else {
+				channelManagementProfile.sendGreeting(request.getProfiles(), reply);
 			}
 		}
 		

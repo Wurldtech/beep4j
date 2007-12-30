@@ -13,11 +13,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal;
+package net.sf.beep4j.internal.stream;
 
 import java.util.HashMap;
 import java.util.Map;
 
+import net.sf.beep4j.internal.SessionListener;
 import net.sf.beep4j.internal.util.Assert;
 
 /**

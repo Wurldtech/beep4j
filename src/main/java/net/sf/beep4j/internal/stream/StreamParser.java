@@ -13,15 +13,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal;
+package net.sf.beep4j.internal.stream;
+
+import java.nio.ByteBuffer;
+
+import net.sf.beep4j.ProtocolException;
 
 /**
- * Factory for {@link FrameHandler} objects.
+ * Interface to be implemented by parsers that know how to process
+ * a BEEP stream. The stream arrives as sequence of ByteBuffer
+ * objects.
  * 
  * @author Simon Raess
  */
-public interface FrameHandlerFactory {
+public interface StreamParser {
 	
-	FrameHandler createFrameHandler();
+	/**
+	 * Processes the content of the given ByteBuffer.
+	 * 
+	 * @param buffer the byte buffer
+	 * @throws ProtocolException if the BEEP header is not valid
+	 */
+	void process(ByteBuffer buffer);
 	
 }

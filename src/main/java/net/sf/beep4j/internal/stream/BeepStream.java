@@ -13,10 +13,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal;
+package net.sf.beep4j.internal.stream;
 
 import net.sf.beep4j.Message;
+import net.sf.beep4j.internal.SessionListener;
 
+/**
+ * Represents the interface of the stream layer. The stream layer is responsible
+ * to receive and send BEEP messages as well as to provide a way to close the
+ * underlying transport. The messages in the stream layer are not yet correlated
+ * or assigned to a particular channel.
+ * 
+ * @author Simon Raess
+ */
 public interface BeepStream extends SessionListener {
 	
 	/**

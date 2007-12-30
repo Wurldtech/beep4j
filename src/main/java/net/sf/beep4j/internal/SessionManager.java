@@ -19,6 +19,7 @@ import net.sf.beep4j.CloseChannelRequest;
 import net.sf.beep4j.Message;
 import net.sf.beep4j.ProfileInfo;
 import net.sf.beep4j.ReplyHandler;
+import net.sf.beep4j.internal.profile.CloseCallback;
 
 /**
  * The SessionManager is used to start / close channels and to close

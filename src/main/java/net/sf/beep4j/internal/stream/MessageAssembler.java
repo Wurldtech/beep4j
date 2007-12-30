@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal;
+package net.sf.beep4j.internal.stream;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -23,9 +23,9 @@ import java.util.Map;
 
 import net.sf.beep4j.Message;
 import net.sf.beep4j.ProtocolException;
-import net.sf.beep4j.internal.DataHeader.ANSHeader;
 import net.sf.beep4j.internal.message.DefaultMessageParser;
 import net.sf.beep4j.internal.message.MessageParser;
+import net.sf.beep4j.internal.stream.DataHeader.ANSHeader;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

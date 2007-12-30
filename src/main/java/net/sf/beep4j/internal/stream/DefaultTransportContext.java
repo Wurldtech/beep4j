@@ -13,21 +13,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal;
+package net.sf.beep4j.internal.stream;
 
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import net.sf.beep4j.ProtocolException;
+import net.sf.beep4j.internal.TransportHandler;
 import net.sf.beep4j.internal.util.Assert;
 import net.sf.beep4j.transport.TransportContext;
 
 public class DefaultTransportContext implements TransportContext {
-	
-	private final static Logger LOG = LoggerFactory.getLogger(TransportContext.class);
 	
 	private final TransportHandler handler;
 	
@@ -52,7 +48,6 @@ public class DefaultTransportContext implements TransportContext {
 		try {
 			parser.process(buffer);
 		} catch (ProtocolException e) {
-			LOG.warn("dropping connection because of a protocol exception", e);
 			exceptionCaught(e);
 		}
 	}

@@ -13,12 +13,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal;
+package net.sf.beep4j.internal.stream;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 
 import junit.framework.TestCase;
+
+import net.sf.beep4j.internal.stream.ParseState;
+import net.sf.beep4j.internal.stream.ParseStateContext;
+import net.sf.beep4j.internal.stream.TrailerState;
 
 import org.easymock.MockControl;
 

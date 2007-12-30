@@ -24,15 +24,17 @@ import net.sf.beep4j.SessionHandler;
 import net.sf.beep4j.internal.profile.BEEPError;
 import net.sf.beep4j.internal.profile.ChannelManagementProfile;
 import net.sf.beep4j.internal.profile.Greeting;
+import net.sf.beep4j.internal.stream.BeepStream;
+import net.sf.beep4j.internal.stream.MessageHandler;
 
 import org.jmock.Mock;
 import org.jmock.MockObjectTestCase;
 
 public class SessionImplTest extends MockObjectTestCase {
 	
-	private Mock mappingMock;
+	private Mock beepStreamMock;
 	
-	private TransportMapping mapping;
+	private BeepStream beepStream;
 	
 	private Mock sessionHandlerMock;
 	
@@ -42,8 +44,8 @@ public class SessionImplTest extends MockObjectTestCase {
 	protected void setUp() throws Exception {
 		super.setUp();
 		
-		mappingMock = mock(TransportMapping.class);
-		mapping = (TransportMapping) mappingMock.proxy();
+		beepStreamMock = mock(BeepStream.class);
+		beepStream = (BeepStream) beepStreamMock.proxy();
 		
 		sessionHandlerMock = mock(SessionHandler.class);
 		sessionHandler = (SessionHandler) sessionHandlerMock.proxy();
@@ -86,14 +88,14 @@ public class SessionImplTest extends MockObjectTestCase {
 		Message greeting = new MessageStub();
 		
 		// define expectations
-		mappingMock.expects(once()).method("channelStarted").with(eq(0));
+		beepStreamMock.expects(once()).method("channelStarted").with(eq(0));
 		profileMock.expects(once()).method("createChannelHandler").with(ANYTHING).will(returnValue(channelHandler));
 		profileMock.expects(once()).method("receivedGreeting").with(same(greeting));
 		channelHandlerMock.expects(once()).method("messageReceived").with(same(message), ANYTHING);
 		sessionHandlerMock.expects(once()).method("sessionOpened").with(ANYTHING);
 
 		// test
-		MessageHandler session = new SessionImpl(false, sessionHandler, mapping) {
+		MessageHandler session = new SessionImpl(false, sessionHandler, beepStream) {
 			@Override
 			protected ChannelManagementProfile createChannelManagementProfile(boolean initiator) {
 				return profile;
@@ -111,8 +113,8 @@ public class SessionImplTest extends MockObjectTestCase {
 		Message message = new MessageStub();
 		
 		// define expectations
-		mappingMock.expects(once()).method("channelStarted").with(eq(0));
-		mappingMock.expects(once()).method("closeTransport");
+		beepStreamMock.expects(once()).method("channelStarted").with(eq(0));
+		beepStreamMock.expects(once()).method("closeTransport");
 		profileMock.expects(once()).method("createChannelHandler").with(ANYTHING).will(returnValue(channelHandler));
 		sessionHandlerMock.expects(once()).method("sessionStartDeclined")
 				.with(eq(550), eq("still working"));
@@ -121,7 +123,7 @@ public class SessionImplTest extends MockObjectTestCase {
 				.will(returnValue(new BEEPError(550, "still working")));
 
 		// test
-		MessageHandler session = new SessionImpl(false, sessionHandler, mapping) {
+		MessageHandler session = new SessionImpl(false, sessionHandler, beepStream) {
 			@Override
 			protected ChannelManagementProfile createChannelManagementProfile(boolean initiator) {
 				return profile;
@@ -138,7 +140,7 @@ public class SessionImplTest extends MockObjectTestCase {
 		Message message = new MessageStub();
 		
 		// define expectations
-		mappingMock.expects(once()).method("channelStarted").with(eq(0));
+		beepStreamMock.expects(once()).method("channelStarted").with(eq(0));
 		profileMock.expects(once()).method("createChannelHandler").with(ANYTHING).will(returnValue(channelHandler));
 		profileMock.expects(once()).method("receivedGreeting")
 				.with(same(message))
@@ -146,7 +148,7 @@ public class SessionImplTest extends MockObjectTestCase {
 		sessionHandlerMock.expects(once()).method("sessionOpened").with(ANYTHING);
 		
 		// test
-		MessageHandler session = new SessionImpl(false, sessionHandler, mapping) {
+		MessageHandler session = new SessionImpl(false, sessionHandler, beepStream) {
 			@Override
 			protected ChannelManagementProfile createChannelManagementProfile(boolean initiator) {
 				return profile;
@@ -169,17 +171,17 @@ public class SessionImplTest extends MockObjectTestCase {
 		
 		// define expectations
 		sessionHandlerMock.expects(once()).method("sessionOpened").with(ANYTHING);
-		mappingMock.expects(once()).method("channelStarted").with(eq(0));
+		beepStreamMock.expects(once()).method("channelStarted").with(eq(0));
 		profileMock.expects(once()).method("createChannelHandler").with(ANYTHING).will(returnValue(channelHandler));
 		profileMock.expects(once()).method("receivedGreeting")
 				.with(same(greeting))
 				.will(returnValue(new Greeting(new String[0], new String[0], new String[] { "abc" })));
 
-		mappingMock.expects(once()).method("sendMSG").with(eq(0), eq(1), same(message));
+		beepStreamMock.expects(once()).method("sendMSG").with(eq(0), eq(1), same(message));
 		replyListenerMock.expects(once()).method("receivedRPY").with(same(reply));
 
 		// test
-		SessionImpl session = new SessionImpl(false, sessionHandler, mapping) {
+		SessionImpl session = new SessionImpl(false, sessionHandler, beepStream) {
 			@Override
 			protected ChannelManagementProfile createChannelManagementProfile(boolean initiator) {
 				return profile;
@@ -279,12 +281,12 @@ public class SessionImplTest extends MockObjectTestCase {
 		ChannelHandler channelHandler = (ChannelHandler) channelHandlerMock.proxy();
 		
 		// define expectations
-		mappingMock.expects(once()).method("channelStarted").with(eq(0));
+		beepStreamMock.expects(once()).method("channelStarted").with(eq(0));
 		profileMock.expects(once()).method("createChannelHandler").with(ANYTHING).will(returnValue(channelHandler));
 		profileMock.expects(once()).method("closeChannel").with(eq(0), ANYTHING);
 
 		// test
-		InternalSession session = new SessionImpl(false, sessionHandler, mapping) {
+		InternalSession session = new SessionImpl(false, sessionHandler, beepStream) {
 			@Override
 			protected ChannelManagementProfile createChannelManagementProfile(boolean initiator) {
 				return profile;

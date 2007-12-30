@@ -17,15 +17,14 @@ package net.sf.beep4j.transport.mina;
 
 import net.sf.beep4j.ChannelFilterChainBuilder;
 import net.sf.beep4j.SessionHandler;
-import net.sf.beep4j.internal.DefaultStreamParser;
-import net.sf.beep4j.internal.DefaultTransportContext;
-import net.sf.beep4j.internal.DelegatingFrameHandler;
-import net.sf.beep4j.internal.FrameHandler;
-import net.sf.beep4j.internal.FrameHandlerFactory;
-import net.sf.beep4j.internal.MessageAssembler;
 import net.sf.beep4j.internal.SessionImpl;
-import net.sf.beep4j.internal.StreamParser;
-import net.sf.beep4j.internal.TransportMapping;
+import net.sf.beep4j.internal.stream.DefaultStreamParser;
+import net.sf.beep4j.internal.stream.DefaultTransportContext;
+import net.sf.beep4j.internal.stream.DelegatingFrameHandler;
+import net.sf.beep4j.internal.stream.FrameHandler;
+import net.sf.beep4j.internal.stream.FrameHandlerFactory;
+import net.sf.beep4j.internal.stream.MessageAssembler;
+import net.sf.beep4j.internal.stream.StreamParser;
 import net.sf.beep4j.internal.tcp.TCPMapping;
 import net.sf.beep4j.internal.util.HexDump;
 import net.sf.beep4j.transport.LoggingTransportContext;
@@ -55,9 +54,9 @@ public class MinaTransport extends IoHandlerAdapter implements Transport {
 	private TransportContext context;
 	
 	public MinaTransport(boolean initiator, SessionHandler sessionHandler, ChannelFilterChainBuilder builder) {
-		TransportMapping mapping = new TCPMapping(this);
+		final TCPMapping mapping = new TCPMapping(this);
 		final SessionImpl session = new SessionImpl(initiator, sessionHandler, mapping);
-		DelegatingFrameHandler assembler = new DelegatingFrameHandler(new FrameHandlerFactory() {
+		final DelegatingFrameHandler assembler = new DelegatingFrameHandler(new FrameHandlerFactory() {
 			public FrameHandler createFrameHandler() {
 				return new MessageAssembler(session);
 			}

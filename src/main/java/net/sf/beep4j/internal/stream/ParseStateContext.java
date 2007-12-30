@@ -13,27 +13,34 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal;
+package net.sf.beep4j.internal.stream;
 
 import java.nio.ByteBuffer;
 
-import net.sf.beep4j.ProtocolException;
-
 /**
- * Interface to be implemented by parsers that know how to process
- * a BEEP stream. The stream arrives as sequence of ByteBuffer
- * objects.
+ * Context used by ParseState implementations to send notifications
+ * about important moments in the parse lifecycle.
  * 
  * @author Simon Raess
  */
-public interface StreamParser {
+interface ParseStateContext {
 	
 	/**
-	 * Processes the content of the given ByteBuffer.
+	 * Callback method invoked when a header has been parsed.
 	 * 
-	 * @param buffer the byte buffer
-	 * @throws ProtocolException if the BEEP header is not valid
+	 * @param tokens the header tokens
 	 */
-	void process(ByteBuffer buffer);
+	void handleHeader(String[] tokens);
 	
+	/**
+	 * Callback method invoked when the payload has been received.
+	 * 
+	 * @param payload the payload buffer
+	 */
+	void handlePayload(ByteBuffer buffer);
+	
+	/**
+	 * Callback method invoked when the trailer has been parsed.
+	 */
+	void handleTrailer();
 }

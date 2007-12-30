@@ -20,7 +20,8 @@ import java.util.Map;
 
 import net.sf.beep4j.Message;
 import net.sf.beep4j.ProtocolException;
-import net.sf.beep4j.internal.TransportMapping;
+import net.sf.beep4j.internal.stream.BeepStream;
+import net.sf.beep4j.internal.stream.TransportMapping;
 import net.sf.beep4j.internal.util.Assert;
 import net.sf.beep4j.transport.Transport;
 
@@ -30,7 +31,7 @@ import net.sf.beep4j.transport.Transport;
  * 
  * @author Simon Raess
  */
-public class TCPMapping implements TransportMapping, ChannelControllerFactory {
+public class TCPMapping implements TransportMapping, BeepStream, ChannelControllerFactory {
 
 	private static final int DEFAULT_BUFFER_SIZE = 4096;
 	
