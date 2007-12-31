@@ -22,6 +22,11 @@ package net.sf.beep4j.internal.stream;
  */
 public interface FrameHandlerFactory {
 	
+	/**
+	 * Creates a new {@link FrameHandler}.
+	 * 
+	 * @return the newly created FrameHandler
+	 */
 	FrameHandler createFrameHandler();
 	
 }

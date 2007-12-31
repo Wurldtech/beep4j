@@ -13,34 +13,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal.profile;
+package net.sf.beep4j.internal.management;
 
-import java.util.Arrays;
-
+import net.sf.beep4j.Message;
+import net.sf.beep4j.MessageBuilder;
 import net.sf.beep4j.ProfileInfo;
 
-final class StartChannelMessage implements ChannelManagementRequest {
+public interface ChannelManagementMessageBuilder {
 	
-	private final int channelNumber;
-	
-	private final ProfileInfo[] profiles;
-	
-	public StartChannelMessage(int channelNumber, ProfileInfo[] profiles) {
-		this.channelNumber = channelNumber;
-		this.profiles = profiles.clone();
-	}
-	
-	public int getChannelNumber() {
-		return channelNumber;
-	}
-	
-	public ProfileInfo[] getProfiles() {
-		return profiles.clone();
-	}
-	
-	@Override
-	public String toString() {
-		return "StartChannelMessage[channel=" + channelNumber + ",profiles=" + Arrays.asList(profiles) + "]";
-	}
+	Message createGreeting(MessageBuilder builder, String[] profiles);
+
+	Message createProfile(MessageBuilder builder, ProfileInfo profile);
+
+	Message createOk(MessageBuilder builder);
+
+	Message createError(MessageBuilder builder, int code, String message);
+
+	Message createStart(MessageBuilder builder, int channelNumber, ProfileInfo[] infos);
+
+	Message createClose(MessageBuilder builder, int channelNumber, int code);
 	
 }

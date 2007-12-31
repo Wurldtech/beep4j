@@ -31,13 +31,19 @@ import net.sf.beep4j.transport.Transport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DefaultChannelController implements ChannelController {
+/**
+ * Default implementation of the {@link ChannelController} interface for use
+ * by the TCP mapping implementation.
+ * 
+ * @author Simon Raess
+ */
+final class DefaultChannelController implements ChannelController {
 	
 	private static final Logger LOG = LoggerFactory.getLogger(ChannelController.class);
 	
 	private static final Charset ASCII_CHARSET = Charset.forName("US-ASCII");
 
-	public static final int MINIMUM_FRAME_SIZE = 1;
+	private static final int MINIMUM_FRAME_SIZE = 1;
 	
 	private final int channel;
 	
@@ -59,13 +65,13 @@ public class DefaultChannelController implements ChannelController {
 		this.window = new SlidingWindow(window);
 	}
 	
-	public void updateSendWindow(long ackno, int size) {
+	public synchronized void updateSendWindow(long ackno, int size) {
 		LOG.debug("update send window: ackno=" + ackno + ",window=" + size);
 		senderWindow.slide(ackno, size);
 		sendFrames(transport);
 	}
 	
-	public void sendANS(int messageNumber, int answerNumber, Message message) {
+	public synchronized void sendANS(int messageNumber, int answerNumber, Message message) {
 		LOG.debug("sendANS to message " + messageNumber + " with answer number "
 				+ answerNumber + " on channel " + channel);
 		ByteBuffer buffer = message.asByteBuffer();
@@ -81,7 +87,7 @@ public class DefaultChannelController implements ChannelController {
 		sendFrames(transport);
 	}
 	
-	public void sendERR(int messageNumber, Message message) {
+	public synchronized void sendERR(int messageNumber, Message message) {
 		LOG.debug("sendERR to message " + messageNumber + " on channel " + channel);
 		ByteBuffer buffer = message.asByteBuffer();
 		DataHeader header = new DataHeader(
@@ -96,7 +102,7 @@ public class DefaultChannelController implements ChannelController {
 		sendFrames(transport);
 	}
 	
-	public void sendMSG(int messageNumber, Message message) {
+	public synchronized void sendMSG(int messageNumber, Message message) {
 		LOG.debug("sendMSG with message number " + messageNumber + " on channel " + channel);
 		ByteBuffer buffer = message.asByteBuffer();
 		DataHeader header = new DataHeader(
@@ -111,7 +117,7 @@ public class DefaultChannelController implements ChannelController {
 		sendFrames(transport);
 	}
 	
-	public void sendNUL(int messageNumber) {
+	public synchronized void sendNUL(int messageNumber) {
 		LOG.debug("sendNUL to message " + messageNumber + " on channel " + channel);
 		DataHeader header = new DataHeader(
 				MessageType.NUL,
@@ -123,7 +129,7 @@ public class DefaultChannelController implements ChannelController {
 		sendFrames(transport);
 	}
 	
-	public void sendRPY(int messageNumber, Message message) {
+	public synchronized void sendRPY(int messageNumber, Message message) {
 		LOG.debug("sendRPY to message " + messageNumber + " on channel " + channel);
 		ByteBuffer buffer = message.asByteBuffer();
 		DataHeader header = new DataHeader(
@@ -152,7 +158,7 @@ public class DefaultChannelController implements ChannelController {
 		}
 	}
 	
-	public void frameReceived(long seqno, int size) {
+	public synchronized void frameReceived(long seqno, int size) {
 		if (seqno != window.getPosition()) {
 			throw new IllegalStateException("sequence number " + seqno + " does not "
 					+ "match expected sequence number " + window.getPosition());

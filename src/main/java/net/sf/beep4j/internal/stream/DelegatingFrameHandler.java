@@ -36,6 +36,7 @@ public class DelegatingFrameHandler implements FrameHandler, SessionListener {
 	public DelegatingFrameHandler(FrameHandlerFactory factory) {
 		Assert.notNull("factory", factory);
 		this.factory = factory;
+		this.channelStarted(0);
 	}
 	
 	public void handleFrame(Frame frame) {

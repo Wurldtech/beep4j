@@ -95,3 +95,8 @@
   - channelStartRequested selects first supported profile according to list
   
   - maybe desired, wait for user feedback
+
+  
+- logging
+  - net.sf.beep4j.transport: logging of transport layer events
+  - net.sf.beep4j.transport.DATA: all data passing through the transport layer

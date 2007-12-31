@@ -13,12 +13,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal.profile;
+package net.sf.beep4j.internal.management;
 
-public interface CloseCallback {
+import net.sf.beep4j.ProfileInfo;
+
+public interface StartChannelCallback {
 	
-	void closeAccepted();
+	void channelCreated(ProfileInfo info);
 	
-	void closeDeclined(int code, String message);
+	void channelFailed(int code, String message);
 	
 }

@@ -52,6 +52,10 @@ final class PayloadState implements ParseState {
 		this.payload = ByteBuffer.allocate(payloadSize);
 	}
 	
+	public final String getName() {
+		return "payload";
+	}
+	
 	public final boolean process(ByteBuffer buffer, ParseStateContext context) {
 		// calculate the number of bytes to be read
 		int available = buffer.remaining();

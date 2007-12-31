@@ -22,9 +22,6 @@ import net.sf.beep4j.Message;
 import net.sf.beep4j.Reply;
 import net.sf.beep4j.internal.util.Assert;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * Base implementation for ChannelHandler implementors. Implement the remaining
  * unimplemented methods and override the methods you deem necessary.
@@ -32,8 +29,6 @@ import org.slf4j.LoggerFactory;
  * @author Simon Raess
  */
 public abstract class ChannelHandlerAdapter implements ChannelHandler {
-	
-	private static final Logger LOG = LoggerFactory.getLogger(ChannelHandlerAdapter.class);
 	
 	/**
 	 * The associated Channel object.
@@ -57,7 +52,7 @@ public abstract class ChannelHandlerAdapter implements ChannelHandler {
 	 * @param message the diagnostic message
 	 */
 	public void channelStartFailed(int code, String message) {
-		LOG.debug("starting channel failed: " + code + ",'" + message + "'");
+		// ignored
 	}
 	
 	/**
@@ -69,7 +64,6 @@ public abstract class ChannelHandlerAdapter implements ChannelHandler {
 	 */
 	public void channelOpened(Channel channel) {
 		Assert.notNull("channel", channel);
-		LOG.debug("channel opened");
 		this.channel = channel;
 	}
 	
@@ -94,7 +88,6 @@ public abstract class ChannelHandlerAdapter implements ChannelHandler {
 	 * @param request the request to be declined or accepted
 	 */
 	public void channelCloseRequested(CloseChannelRequest request) {
-		LOG.debug("close of channel requested: accepted");
 		request.accept();
 	}
 	
@@ -103,7 +96,6 @@ public abstract class ChannelHandlerAdapter implements ChannelHandler {
 	 * method sets the channel reference to null.
 	 */
 	public void channelClosed() {
-		LOG.debug("channel closed");
 		this.channel = null;
 	}
 

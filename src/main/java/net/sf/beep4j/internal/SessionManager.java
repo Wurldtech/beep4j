@@ -19,11 +19,12 @@ import net.sf.beep4j.CloseChannelRequest;
 import net.sf.beep4j.Message;
 import net.sf.beep4j.ProfileInfo;
 import net.sf.beep4j.ReplyHandler;
-import net.sf.beep4j.internal.profile.CloseCallback;
+import net.sf.beep4j.internal.management.CloseCallback;
 
 /**
  * The SessionManager is used to start / close channels and to close
- * a session.
+ * a session. It is the interface to the Session as seen by the
+ * ChannelManagementProfile.
  * 
  * @author Simon Raess
  */
@@ -61,6 +62,6 @@ public interface SessionManager {
 	 * @param message the message to be sent
 	 * @param reply the handler for the reply
 	 */
-	void sendMessage(Message message, ReplyHandler reply);
+	void sendChannelManagementMessage(Message message, ReplyHandler reply);
 	
 }

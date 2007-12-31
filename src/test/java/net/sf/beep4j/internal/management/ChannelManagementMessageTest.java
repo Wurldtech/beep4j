@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal.profile;
+package net.sf.beep4j.internal.management;
 
 import java.util.Arrays;
 
@@ -21,6 +21,14 @@ import junit.framework.TestCase;
 import net.sf.beep4j.Message;
 import net.sf.beep4j.MessageBuilder;
 import net.sf.beep4j.ProfileInfo;
+import net.sf.beep4j.internal.management.BEEPError;
+import net.sf.beep4j.internal.management.ChannelManagementMessageBuilder;
+import net.sf.beep4j.internal.management.ChannelManagementMessageParser;
+import net.sf.beep4j.internal.management.CloseChannelMessage;
+import net.sf.beep4j.internal.management.Greeting;
+import net.sf.beep4j.internal.management.SaxMessageBuilder;
+import net.sf.beep4j.internal.management.SaxMessageParser;
+import net.sf.beep4j.internal.management.StartChannelMessage;
 import net.sf.beep4j.internal.message.DefaultMessageBuilder;
 
 public class ChannelManagementMessageTest extends TestCase {

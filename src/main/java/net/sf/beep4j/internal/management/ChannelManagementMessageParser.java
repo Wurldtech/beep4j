@@ -13,8 +13,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal.profile;
+package net.sf.beep4j.internal.management;
 
-interface ChannelManagementRequest {
-		
+import net.sf.beep4j.Message;
+import net.sf.beep4j.ProfileInfo;
+
+public interface ChannelManagementMessageParser {
+	
+	ChannelManagementRequest parseRequest(Message message);
+	
+	Greeting parseGreeting(Message message);
+	
+	ProfileInfo parseProfile(Message message);
+	
+	void parseOk(Message message);
+	
+	BEEPError parseError(Message message);
+	
 }

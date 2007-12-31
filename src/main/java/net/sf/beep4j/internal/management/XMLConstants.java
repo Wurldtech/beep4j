@@ -13,25 +13,40 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal.profile;
+package net.sf.beep4j.internal.management;
 
-import net.sf.beep4j.ProfileInfo;
+/**
+ * Constants of all Strings used by the channel management profile
+ * messages.
+ * 
+ * @author Simon Raess
+ */
+interface XMLConstants {
+	
+	String E_GREETING = "greeting";
+	
+	String E_ERROR = "error";
+	
+	String E_OK = "ok";
+	
+	String E_CLOSE = "close";
+	
+	String E_START = "start";
+	
+	String E_PROFILE = "profile";
+	
+	String ENCODING_BASE64 = "base64";
+	
+	String A_CODE = "code";
+	
+	String A_ENCODING = "encoding";
+	
+	String A_FEATURES = "features";
+	
+	String A_LOCALIZE = "localize";
+	
+	String A_NUMBER = "number";
+	
+	String A_URI = "uri";
 
-final class ProfileMessage {
-	
-	private final ProfileInfo profile;
-	
-	public ProfileMessage(ProfileInfo profile) {
-		this.profile = profile;
-	}
-	
-	public ProfileInfo getProfile() {
-		return profile;
-	}
-	
-	@Override
-	public String toString() {
-		return "<profile uri='" + profile.getUri() + "'>...</profile>";
-	}
-	
 }

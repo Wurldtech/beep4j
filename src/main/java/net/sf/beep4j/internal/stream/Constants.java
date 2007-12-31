@@ -13,12 +13,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal.profile;
+package net.sf.beep4j.internal.stream;
 
-import java.util.Map;
+import java.io.UnsupportedEncodingException;
 
-interface ElementHandler {
-	void startElement(String name, Map<String,String> attributes);
-	void characters(String content);
-	void endElement();
+/**
+ * Constants related to BEEP frames.
+ * 
+ * @author sir
+ */
+public abstract class Constants {
+	
+	public static final String TRAILER = "END\r\n";
+	
+	public static final byte[] TRAILER_BYTES;
+	
+	static {
+		try {
+			TRAILER_BYTES = TRAILER.getBytes("US-ASCII");
+		} catch (UnsupportedEncodingException e) {
+			throw new ExceptionInInitializerError(e);
+		}		
+	}
+	
+	public static final int TRAILER_LENGTH = 5;
+
 }

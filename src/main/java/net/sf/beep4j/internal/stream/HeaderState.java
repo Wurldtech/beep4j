@@ -40,7 +40,11 @@ final class HeaderState implements ParseState {
 
 	private final ByteBuffer tmp = ByteBuffer.allocate(MAX_HEADER_LENGTH);
 	
-	public boolean process(ByteBuffer buffer, ParseStateContext context) {
+	public final String getName() {
+		return "header";
+	}
+	
+	public final boolean process(ByteBuffer buffer, ParseStateContext context) {
 		int position = buffer.position();
 		int index = findLF(buffer);
 		

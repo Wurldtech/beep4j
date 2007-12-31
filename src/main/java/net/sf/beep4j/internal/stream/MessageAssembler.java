@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * MessageAssembler assembles fragmented frames into a Message.
- * The assembled Messages are passed to a MessageHandler.
+ * The assembled Messages are passed to a {@link MessageHandler}.
  * 
  * @author Simon Raess
  */
@@ -42,31 +42,35 @@ public class MessageAssembler implements FrameHandler {
 	
 	private final MessageHandler handler;
 	
-	private State state;
+	private State currentState;
 
 	public MessageAssembler(MessageHandler handler) {
 		this.handler = handler;
 	}
-
+	
+	private void setCurrentState(State state) {
+		if (LOG.isDebugEnabled()) {
+			LOG.debug("moving from " + currentState + " to " + state);
+		}
+		currentState = state;
+	}
 	
 	// --> start of FrameHandler methods <--
 	
 	public void handleFrame(Frame frame) {
 		LOG.debug("got frame: " + frame.getHeader());
 		
-		if (state == null) {
+		if (currentState == null) {
 			MessageType type = frame.getHeader().getType();
 			if (MessageType.ANS == type || MessageType.NUL == type) {
-				LOG.debug("moving to ANS state");
-				state = new AnsState();
+				setCurrentState(new AnsState());
 			} else {
-				LOG.debug("moving to normal state");
-				state = new NormalState();
+				setCurrentState(new NormalState());
 			}
 		}
 		
 		// pass on to the state
-		state.append(frame, handler);
+		currentState.append(frame, handler);
 	}
 	
 	// --> end of FrameHandler methods <--
@@ -151,7 +155,7 @@ public class MessageAssembler implements FrameHandler {
 				last = null;
 				List<Frame> copy = new LinkedList<Frame>(fragments);
 				fragments.clear();
-				state = null;
+				setCurrentState(null);
 				receive(type, frame.getChannelNumber(), frame.getMessageNumber(), createMessage(copy));
 			}
 		}
@@ -193,6 +197,12 @@ public class MessageAssembler implements FrameHandler {
 				}
 			}
 		}
+		
+		@Override
+		public String toString() {
+			return "<normal>";
+		}
+		
 	}
 	
 	private class AnsState implements State {
@@ -236,9 +246,7 @@ public class MessageAssembler implements FrameHandler {
 					// A frame is poorly formed if the header starts with "NUL", and refers to 
 					// a message number for which at least one other frame has been received, 
 					// and the keyword of of the immediately-previous received frame for 
-					// this reply isn't "ANS".
-					
-					// TODO: use proper exceptions
+					// this reply isn't "ANS".					
 					throw new ProtocolException("unfinished ANS messages");
 				} else if (frame.isIntermediate()) {
 					throw new ProtocolException("NUL reply's continuation indicator is '*'");
@@ -248,7 +256,7 @@ public class MessageAssembler implements FrameHandler {
 				}
 				
 				fragments.clear();
-				state = null;
+				setCurrentState(null);
 				handler.receiveNUL(frame.getChannelNumber(), frame.getMessageNumber());
 				
 			} else {
@@ -275,6 +283,11 @@ public class MessageAssembler implements FrameHandler {
 				
 		private boolean hasUnfinishedAnsMessages() {
 			return fragments.size() > 0;
+		}
+		
+		@Override
+		public String toString() {
+			return "<ANS>";
 		}
 		
 	}

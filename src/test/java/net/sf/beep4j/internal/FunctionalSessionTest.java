@@ -32,9 +32,9 @@ import net.sf.beep4j.Reply;
 import net.sf.beep4j.SessionHandler;
 import net.sf.beep4j.StartChannelRequest;
 import net.sf.beep4j.StartSessionRequest;
+import net.sf.beep4j.internal.management.ChannelManagementMessageBuilder;
+import net.sf.beep4j.internal.management.SaxMessageBuilder;
 import net.sf.beep4j.internal.message.DefaultMessageBuilder;
-import net.sf.beep4j.internal.profile.ChannelManagementMessageBuilder;
-import net.sf.beep4j.internal.profile.SaxMessageBuilder;
 import net.sf.beep4j.internal.stream.BeepStream;
 import net.sf.beep4j.internal.stream.MessageHandler;
 

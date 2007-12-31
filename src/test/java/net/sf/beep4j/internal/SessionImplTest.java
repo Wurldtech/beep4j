@@ -21,12 +21,13 @@ import net.sf.beep4j.MessageStub;
 import net.sf.beep4j.NullCloseChannelCallback;
 import net.sf.beep4j.ReplyHandler;
 import net.sf.beep4j.SessionHandler;
-import net.sf.beep4j.internal.profile.BEEPError;
-import net.sf.beep4j.internal.profile.ChannelManagementProfile;
-import net.sf.beep4j.internal.profile.Greeting;
+import net.sf.beep4j.internal.management.BEEPError;
+import net.sf.beep4j.internal.management.ChannelManagementProfile;
+import net.sf.beep4j.internal.management.Greeting;
 import net.sf.beep4j.internal.stream.BeepStream;
 import net.sf.beep4j.internal.stream.MessageHandler;
 
+import org.apache.mina.transport.vmpipe.VmPipeAddress;
 import org.jmock.Mock;
 import org.jmock.MockObjectTestCase;
 
@@ -54,15 +55,16 @@ public class SessionImplTest extends MockObjectTestCase {
 	// --> test TransportContext methods <--
 	
 	public void testConnectionEstablished() throws Exception {
-		// TODO: method stub
+		VmPipeAddress address = new VmPipeAddress(1);
+		beepStreamMock.expects(once()).method("channelStarted").with(eq(0));
+		sessionHandlerMock.expects(once()).method("connectionEstablished").withAnyArguments();
+		beepStreamMock.expects(once()).method("sendRPY").with(eq(0), eq(0), ANYTHING);
+		SessionImpl session = new SessionImpl(true, sessionHandler, beepStream);
+		session.connectionEstablished(address);
 	}
 	
 	public void testExceptionCaught() throws Exception {
 		// nothing to be checked, yet
-	}
-	
-	public void testMessageReceived() throws Exception {
-		// TODO: method stub
 	}
 	
 	public void testConnectionClosed() throws Exception {

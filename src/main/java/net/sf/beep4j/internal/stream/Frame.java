@@ -17,14 +17,33 @@ package net.sf.beep4j.internal.stream;
 
 import java.nio.ByteBuffer;
 
-import net.sf.beep4j.internal.Constants;
 import net.sf.beep4j.internal.util.Assert;
 import net.sf.beep4j.transport.Transport;
 
+/**
+ * Represents a BEEP frame, which consists of a header ({@link DataHeader})
+ * and a {@link ByteBuffer} content.
+ * 
+ * @author Simon Raess
+ */
 public final class Frame {
+	
+	/**
+	 * The header of this frame.
+	 */
 	private final DataHeader header;
+	
+	/**
+	 * The payload data of this frame.
+	 */
 	private final ByteBuffer payload;
 	
+	/**
+	 * Creates a new frame that has the given header and payload.
+	 * 
+	 * @param header the header of the frame
+	 * @param payload the payload of the frame
+	 */
 	public Frame(DataHeader header, ByteBuffer payload) {
 		Assert.notNull("header", header);
 		Assert.notNull("payload", payload);
@@ -64,6 +83,13 @@ public final class Frame {
 		return payload;
 	}
 	
+	/**
+	 * Splits this frame into one frame of the given <var>size</var>
+	 * and another frame with the rest of data.
+	 * 
+	 * @param size the size of the first frame's payload
+	 * @return an array of two frames replacing this frame
+	 */
 	public Frame[] split(int size) {
 		Frame[] result = new Frame[2];
 		
@@ -78,18 +104,25 @@ public final class Frame {
 		
 	private ByteBuffer[] splitPayload(ByteBuffer payload, int size) {
 		ByteBuffer[] result = new ByteBuffer[2];
+		ByteBuffer tmp = payload.asReadOnlyBuffer();
 		
-		payload.position(0).limit(size);
-		result[0] = payload.slice();
+		tmp.position(0).limit(size);
+		result[0] = tmp.slice();
 		
-		payload.position(size);
-		payload.limit(payload.capacity());
-		result[1] = payload.slice();
+		tmp.position(size);
+		tmp.limit(payload.capacity());
+		result[1] = tmp.slice();
 		
 		return result;
 	}
 
-	public void send(Transport transport) {
+	/**
+	 * Sends this frame to the given transport.
+	 * 
+	 * @param transport the transport where the bytes of this frame are
+	 *        sent to
+	 */
+	public final void send(Transport transport) {
 		ByteBuffer headerBuffer = header.asByteBuffer();
 		
 		ByteBuffer buffer = ByteBuffer.allocate(headerBuffer.remaining() + getSize() + 5);
@@ -114,6 +147,14 @@ public final class Frame {
 		} else {
 			return false;
 		}
+	}
+	
+	@Override
+	public int hashCode() {
+		int result = 17;
+		result = result * 13 + header.hashCode();
+		result = result * 13 + payload.hashCode();
+		return result;
 	}
 	
 	@Override

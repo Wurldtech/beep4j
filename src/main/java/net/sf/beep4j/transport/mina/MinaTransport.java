@@ -24,6 +24,7 @@ import net.sf.beep4j.internal.stream.DelegatingFrameHandler;
 import net.sf.beep4j.internal.stream.FrameHandler;
 import net.sf.beep4j.internal.stream.FrameHandlerFactory;
 import net.sf.beep4j.internal.stream.MessageAssembler;
+import net.sf.beep4j.internal.stream.MessageHandler;
 import net.sf.beep4j.internal.stream.StreamParser;
 import net.sf.beep4j.internal.tcp.TCPMapping;
 import net.sf.beep4j.internal.util.HexDump;
@@ -56,16 +57,16 @@ public class MinaTransport extends IoHandlerAdapter implements Transport {
 	public MinaTransport(boolean initiator, SessionHandler sessionHandler, ChannelFilterChainBuilder builder) {
 		final TCPMapping mapping = new TCPMapping(this);
 		final SessionImpl session = new SessionImpl(initiator, sessionHandler, mapping);
-		final DelegatingFrameHandler assembler = new DelegatingFrameHandler(new FrameHandlerFactory() {
+		final MessageHandler messageHandler = session;
+		final DelegatingFrameHandler frameHandler = new DelegatingFrameHandler(new FrameHandlerFactory() {
 			public FrameHandler createFrameHandler() {
-				return new MessageAssembler(session);
+				return new MessageAssembler(messageHandler);
 			}
 		});
-		session.addSessionListener(assembler);
-		assembler.channelStarted(0);
+		session.addSessionListener(frameHandler);
 		
-		StreamParser parser = new DefaultStreamParser(assembler, mapping);
-		TransportContext target = new DefaultTransportContext(session, parser);
+		final StreamParser parser = new DefaultStreamParser(frameHandler, mapping);
+		final TransportContext target = new DefaultTransportContext(session, parser);
 		context = new LoggingTransportContext(target);
 	}
 	
@@ -115,7 +116,7 @@ public class MinaTransport extends IoHandlerAdapter implements Transport {
 	@Override
 	public void exceptionCaught(IoSession session, Throwable cause) throws Exception {
 		if (LOG.isDebugEnabled()) {
-			LOG.debug("caugth exception", cause);
+			LOG.debug("caught exception", cause);
 		}
 		context.exceptionCaught(cause);
 	}

@@ -37,9 +37,17 @@ final class TrailerState implements ParseState {
 	
 	private static final String TRAILER = "END\r\n";
 
+	/**
+	 * The trailer consists of 5 bytes. We can allocate and reuse a 
+	 * single buffer. 
+	 */
 	private ByteBuffer tmp = ByteBuffer.allocate(5);
 	
-	public boolean process(ByteBuffer buffer, ParseStateContext context) {
+	public final String getName() {
+		return "trailer";
+	}
+	
+	public final boolean process(ByteBuffer buffer, ParseStateContext context) {
 		if (tmp.capacity() - tmp.remaining() + buffer.remaining() >= 5) {
 			int remaining = tmp.remaining();
 			
@@ -53,7 +61,7 @@ final class TrailerState implements ParseState {
 			String trailer = charset.decode(tmp).toString();
 				
 			if (!TRAILER.equals(trailer)) {
-				throw new ProtocolException("expected 'END\\r\\n' (was '" + trailer + "'");
+				throw new ProtocolException("expected 'END<CR><LF>' (was '" + trailer + "'");
 			}
 			
 			// move the position past the header

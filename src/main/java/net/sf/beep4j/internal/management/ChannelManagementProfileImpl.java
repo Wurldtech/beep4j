@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal.profile;
+package net.sf.beep4j.internal.management;
 
 import net.sf.beep4j.ChannelHandler;
 import net.sf.beep4j.Message;
@@ -97,24 +97,24 @@ public class ChannelManagementProfileImpl implements ChannelManagementProfile {
 			final ProfileInfo[] infos, 
 			final StartChannelCallback callback) {
 		Message message = builder.createStart(createMessageBuilder(), channelNumber, infos);
-		manager.sendMessage(message, new ManagementReplyHandler() {
-		
+		manager.sendChannelManagementMessage(message, new ManagementReplyHandler() {
+			
 			public void receivedRPY(Message message) {
 				ProfileInfo profile = parser.parseProfile(message);
 				callback.channelCreated(profile);
 			}
-		
+			
 			public void receivedERR(Message message) {
 				BEEPError error = parser.parseError(message);
 				callback.channelFailed(error.getCode(), error.getMessage());
 			}
-
+			
 		});
 	}
 	
 	public final void closeChannel(final int channelNumber, final CloseCallback callback) {
 		Message message = builder.createClose(createMessageBuilder(), channelNumber, 200);
-		manager.sendMessage(message, new ManagementReplyHandler() {
+		manager.sendChannelManagementMessage(message, new ManagementReplyHandler() {
 		
 			public void receivedRPY(Message message) {
 				parser.parseOk(message);

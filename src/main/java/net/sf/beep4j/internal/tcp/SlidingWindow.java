@@ -15,15 +15,27 @@
  */
 package net.sf.beep4j.internal.tcp;
 
+/**
+ * Helper class to implement calculations of a sliding window.
+ * A sliding window has a start property, which signifies the start
+ * of the window. It has a position property, which represents the
+ * current position within the window. And it has a size property,
+ * which specifies how big the window is. The end of the window
+ * is calculated. It is equal to start + size. The {@link #remaining()}
+ * method returns the number of remaining number of places in the
+ * sliding window.
+ * 
+ * @author Simon Raess
+ */
 final class SlidingWindow {
 	
 	static final long MAX = 4294967295L;
 	
+	private static final long MODULO = MAX + 1;
+	
 	private long start;
 	
 	private long position;
-	
-	private long modulo = MAX + 1;
 	
 	private int windowSize;
 	
@@ -50,11 +62,11 @@ final class SlidingWindow {
 	}
 	
 	long getEnd() {
-		return (start + windowSize) % modulo;
+		return (start + windowSize) % MODULO;
 	}
 	
 	void slide(long start, int size) {
-		start = start % modulo;
+		start = start % MODULO;
 		validateSlide(this.start, start, position, windowSize, size);		
 		this.start = start;
 		this.windowSize = size;
@@ -86,12 +98,12 @@ final class SlidingWindow {
 	
 	void moveBy(int offset) {
 		validateMoveBy(offset);
-		this.position = (position + offset) % modulo;
+		this.position = (position + offset) % MODULO;
 	}
 
 	private void validateMoveBy(int offset) {
 		if (position < start) {
-			if (position + offset > (start + windowSize) % modulo) {
+			if (position + offset > (start + windowSize) % MODULO) {
 				throw new IllegalArgumentException("cannot move position ("
 						+ (position + offset) + ") beyond the end of the window ("
 						+ (start + windowSize) + ")");
@@ -109,9 +121,6 @@ final class SlidingWindow {
 		return (int) (getEnd() - position);
 	}
 	
-	/* (non-Javadoc)
-	 * @see java.lang.Object#toString()
-	 */
 	@Override
 	public String toString() {
 		return "[start=" + start + ",position=" + position + ",window=" + windowSize + "]";

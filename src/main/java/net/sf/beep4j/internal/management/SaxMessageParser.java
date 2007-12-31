@@ -13,19 +13,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal.profile;
+package net.sf.beep4j.internal.management;
 
-import static net.sf.beep4j.internal.profile.XMLConstants.A_CODE;
-import static net.sf.beep4j.internal.profile.XMLConstants.A_ENCODING;
-import static net.sf.beep4j.internal.profile.XMLConstants.A_NUMBER;
-import static net.sf.beep4j.internal.profile.XMLConstants.A_URI;
-import static net.sf.beep4j.internal.profile.XMLConstants.ENCODING_BASE64;
-import static net.sf.beep4j.internal.profile.XMLConstants.E_CLOSE;
-import static net.sf.beep4j.internal.profile.XMLConstants.E_ERROR;
-import static net.sf.beep4j.internal.profile.XMLConstants.E_GREETING;
-import static net.sf.beep4j.internal.profile.XMLConstants.E_OK;
-import static net.sf.beep4j.internal.profile.XMLConstants.E_PROFILE;
-import static net.sf.beep4j.internal.profile.XMLConstants.E_START;
+import static net.sf.beep4j.internal.management.XMLConstants.A_CODE;
+import static net.sf.beep4j.internal.management.XMLConstants.A_ENCODING;
+import static net.sf.beep4j.internal.management.XMLConstants.A_NUMBER;
+import static net.sf.beep4j.internal.management.XMLConstants.A_URI;
+import static net.sf.beep4j.internal.management.XMLConstants.ENCODING_BASE64;
+import static net.sf.beep4j.internal.management.XMLConstants.E_CLOSE;
+import static net.sf.beep4j.internal.management.XMLConstants.E_ERROR;
+import static net.sf.beep4j.internal.management.XMLConstants.E_GREETING;
+import static net.sf.beep4j.internal.management.XMLConstants.E_OK;
+import static net.sf.beep4j.internal.management.XMLConstants.E_PROFILE;
+import static net.sf.beep4j.internal.management.XMLConstants.E_START;
 
 import java.io.IOException;
 import java.io.Reader;

@@ -25,6 +25,13 @@ import java.nio.ByteBuffer;
 interface ParseState {
 	
 	/**
+	 * The name of the current state. Used for logging.
+	 * 
+	 * @return the name of the state
+	 */
+	String getName();
+	
+	/**
 	 * Processes the passed in ByteBuffer. The context object is used
 	 * to report important events back to the context. If the buffer
 	 * is not processed fully, the method returns true. Otherwise,

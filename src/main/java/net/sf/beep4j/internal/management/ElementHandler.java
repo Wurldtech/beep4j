@@ -13,14 +13,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal.profile;
+package net.sf.beep4j.internal.management;
 
-public interface ElementHandlerContext {
-	
-	void pushObject(Object o);
-	
-	Object popObject();
-	
-	Object peekObject();
-	
+import java.util.Map;
+
+interface ElementHandler {
+	void startElement(String name, Map<String,String> attributes);
+	void characters(String content);
+	void endElement();
 }

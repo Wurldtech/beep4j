@@ -20,9 +20,9 @@ import java.nio.charset.Charset;
 
 import junit.framework.TestCase;
 import net.sf.beep4j.Message;
-import net.sf.beep4j.internal.Constants;
 import net.sf.beep4j.internal.message.DefaultMessage;
 import net.sf.beep4j.internal.message.MessageHeader;
+import net.sf.beep4j.internal.stream.Constants;
 import net.sf.beep4j.internal.stream.DataHeader;
 import net.sf.beep4j.internal.stream.MessageType;
 import net.sf.beep4j.transport.Transport;

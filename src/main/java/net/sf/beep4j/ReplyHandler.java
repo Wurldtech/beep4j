@@ -18,7 +18,7 @@ package net.sf.beep4j;
 /**
  * Callback interface used to notify the application about a
  * reply to a message. Whenever the application sends a message
- * ({@link Channel#sendMessage(Message, ReplyListener)}) it
+ * ({@link Channel#sendChannelManagementMessage(Message, ReplyListener)}) it
  * specifies a ReplyListener.
  * 
  * @author Simon Raess

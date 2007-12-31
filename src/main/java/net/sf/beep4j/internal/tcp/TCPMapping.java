@@ -44,6 +44,11 @@ public class TCPMapping implements TransportMapping, BeepStream, ChannelControll
 	private final Map<Integer, ChannelController> channels = 
 			new HashMap<Integer, ChannelController>();
 	
+	/**
+	 * Whether the transport has been closed.
+	 */
+	private boolean closed;
+	
 	public TCPMapping(Transport transport) {
 		this(transport, null);
 	}
@@ -59,6 +64,14 @@ public class TCPMapping implements TransportMapping, BeepStream, ChannelControll
 		this.bufferSize = bufferSize;
 	}
 	
+	/**
+	 * Determines whether the underlying transport has been closed.
+	 * 
+	 * @return true iff the underlying transport has been closed
+	 */
+	public boolean isClosed() {
+		return closed;
+	}
 	
 	// --> start of SessionListener methods <--
 	
@@ -76,6 +89,23 @@ public class TCPMapping implements TransportMapping, BeepStream, ChannelControll
 	}
 	
 	// --> end of SessionListener methods <--
+	
+	/**
+	 * Gets the {@link ChannelController} for the given <var>channel</var>.
+	 * Throws a {@link ProtocolException} if there is no ChannelController
+	 * for the given channel.
+	 * 
+	 * @param channel the channel number
+	 * @return the ChannelController for the given channel
+	 * @throws ProtocolException if the given channel is not open
+	 */
+	private synchronized ChannelController getChannelController(int channel) {
+		ChannelController controller = channels.get(new Integer(channel));
+		if (controller == null) {
+			throw new ProtocolException("unknown channel: " + channel);
+		}
+		return controller;
+	}
 
 	
 	// --> start of ChannelControllerFactory methods <--
@@ -98,7 +128,7 @@ public class TCPMapping implements TransportMapping, BeepStream, ChannelControll
 	}
 
 	public void processMappingFrame(String[] tokens) {
-		if (!tokens[0].equals(SEQHeader.TYPE)) {
+		if (!SEQHeader.TYPE.equals(tokens[0])) {
 			throw new ProtocolException("unsupported frame type: " + tokens[0]);
 		}
 		
@@ -138,17 +168,9 @@ public class TCPMapping implements TransportMapping, BeepStream, ChannelControll
 	
 	public void closeTransport() {
 		transport.closeTransport();
+		closed = true;
 	}
 	
 	// --> end of BeepStream methods <--
-	
-				
-	private synchronized ChannelController getChannelController(int channel) {
-		ChannelController controller = channels.get(new Integer(channel));
-		if (controller == null) {
-			throw new ProtocolException("unknown channel: " + channel);
-		}
-		return controller;
-	}
 
 }

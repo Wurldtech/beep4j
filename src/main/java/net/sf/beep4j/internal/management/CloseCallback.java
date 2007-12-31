@@ -13,34 +13,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal.profile;
+package net.sf.beep4j.internal.management;
 
-public interface XMLConstants {
+public interface CloseCallback {
 	
-	String E_GREETING = "greeting";
+	void closeAccepted();
 	
-	String E_ERROR = "error";
+	void closeDeclined(int code, String message);
 	
-	String E_OK = "ok";
-	
-	String E_CLOSE = "close";
-	
-	String E_START = "start";
-	
-	String E_PROFILE = "profile";
-	
-	String ENCODING_BASE64 = "base64";
-	
-	String A_CODE = "code";
-	
-	String A_ENCODING = "encoding";
-	
-	String A_FEATURES = "features";
-	
-	String A_LOCALIZE = "localize";
-	
-	String A_NUMBER = "number";
-	
-	String A_URI = "uri";
-
 }

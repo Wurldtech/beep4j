@@ -15,7 +15,6 @@
  */
 package net.sf.beep4j.internal.stream;
 
-
 /**
  * Handler interface for frames parsed by the StreamParser.
  * 

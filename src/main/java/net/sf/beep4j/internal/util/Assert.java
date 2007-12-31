@@ -15,6 +15,8 @@
  */
 package net.sf.beep4j.internal.util;
 
+import java.util.concurrent.locks.ReentrantLock;
+
 public final class Assert {
 	
 	private Assert() {
@@ -31,6 +33,12 @@ public final class Assert {
 	public static final void notNull(String name, Object value) {
 		if (value == null) {
 			throw new IllegalArgumentException(name + " cannot be null");
+		}
+	}
+	
+	public static final void holdsLock(String name, ReentrantLock lock) {
+		if (!lock.isHeldByCurrentThread()) {
+			throw new IllegalStateException("current thread does not hold " + name + " lock");
 		}
 	}
 	

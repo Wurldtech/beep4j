@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal.profile;
+package net.sf.beep4j.internal.management;
 
 import net.sf.beep4j.Channel;
 import net.sf.beep4j.ChannelHandler;

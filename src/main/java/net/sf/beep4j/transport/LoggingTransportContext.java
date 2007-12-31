@@ -60,7 +60,7 @@ public class LoggingTransportContext implements TransportContext {
 	}
 
 	public void exceptionCaught(Throwable cause) {
-		LOG.warn("exception caught from transport:");
+		LOG.warn("exception caught from transport");
 		StringWriter writer = new StringWriter();
 		cause.printStackTrace(new PrintWriter(writer));
 		LOG.warn(writer.toString());
