@@ -68,7 +68,14 @@ public class SessionImplTest extends MockObjectTestCase {
 	}
 	
 	public void testConnectionClosed() throws Exception {
-		// TODO: method stub
+		VmPipeAddress address = new VmPipeAddress(1);
+		beepStreamMock.expects(once()).method("channelStarted").with(eq(0));
+		sessionHandlerMock.expects(once()).method("connectionEstablished").withAnyArguments();
+		sessionHandlerMock.expects(once()).method("sessionClosed").withNoArguments();
+		beepStreamMock.expects(once()).method("sendRPY").with(eq(0), eq(0), ANYTHING);
+		SessionImpl session = new SessionImpl(true, sessionHandler, beepStream);
+		session.connectionEstablished(address);
+		session.connectionClosed();
 	}
 	
 	// --> test MessageHandler methods <--

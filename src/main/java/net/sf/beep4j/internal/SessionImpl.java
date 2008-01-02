@@ -100,7 +100,7 @@ public class SessionImpl
 	
 	private SessionState aliveState;
 	
-	private SessionState waitForResponseState;
+	private SessionState closeInitiatedState;
 	
 	private SessionState deadState;
 
@@ -126,7 +126,7 @@ public class SessionImpl
 		
 		initialState = new InitialState();
 		aliveState = new AliveState();
-		waitForResponseState = new WaitForResponseState();
+		closeInitiatedState = new CloseInitiatedState();
 		deadState = new DeadState();
 		currentState = initialState;
 	}
@@ -226,19 +226,6 @@ public class SessionImpl
 	
 	private int getNextChannelNumber() {
 		return channelNumberSequence.next();
-	}
-	
-	private void validateChannelNumber(int number) {
-		if (number <= 0) {
-			throw new ProtocolException(number + " is an illegal channel number");
-		}
-		if (initiator && number % 2 != 0) {
-			throw new ProtocolException("channel numbers of listener peer "
-					+ "must be even numbered");
-		} else if (!initiator && number % 2 != 1) {
-			throw new ProtocolException("channel numbers of initator peer "
-					+ "must be odd numbered");
-		}
 	}
 	
 	private boolean hasOpenChannels() {
@@ -565,9 +552,9 @@ public class SessionImpl
 		
 		void sendMessage(int channelNumber, Message message, ReplyHandler listener);
 		
-		StartChannelResponse channelStartRequested(int channelNumber, ProfileInfo[] profiles);
-		
 		void closeSession();
+		
+		StartChannelResponse channelStartRequested(int channelNumber, ProfileInfo[] profiles);
 		
 		void channelCloseRequested(int channelNumber, CloseChannelRequest request);
 		
@@ -582,16 +569,20 @@ public class SessionImpl
 		public abstract String getName();
 		
 		public void exceptionCaught(Throwable cause) {
-			// TODO: delegate to SessionHandler?
+			// TODO: how to handle other exceptions?
 			if (cause instanceof ProtocolException) {
-				warn("dropping connection because of a protocol exception", (ProtocolException) cause);
-				try {
-					sessionHandler.sessionClosed();
-				} finally {
-					setCurrentState(deadState);
-					beepStream.closeTransport();
-				}
+				handleProtocolException((ProtocolException) cause);
 			}			
+		}
+
+		private void handleProtocolException(ProtocolException cause) {
+			warn("dropping connection because of a protocol exception", cause);
+			try {
+				sessionHandler.sessionClosed();
+			} finally {
+				setCurrentState(deadState);
+				beepStream.closeTransport();
+			}
 		}
 		
 		public void connectionEstablished(SocketAddress address) {
@@ -658,6 +649,14 @@ public class SessionImpl
 		public void sessionCloseRequested(CloseCallback callback) {
 			throw new IllegalStateException("cannot close session");
 		}
+		
+		public void connectionClosed() {
+			try {
+				sessionHandler.sessionClosed();
+			} finally {
+				setCurrentState(deadState);
+			}
+		}
 
 	}
 
@@ -713,8 +712,7 @@ public class SessionImpl
 			validateMessage(channelNumber, messageNumber);
 			BEEPError error = channelManagementProfile.receivedError(message);
 			
-			info("received error, session start failed: " + error.getCode() + ":"
-					+ error.getMessage());
+			info("received error, session start failed: " + error.getCode() + ":" + error.getMessage());
 			
 			sessionHandler.sessionStartDeclined(error.getCode(), error.getMessage());
 			setCurrentState(deadState);
@@ -727,10 +725,6 @@ public class SessionImpl
 						+ "channel 0 with message number 0: was channel " + channelNumber
 						+ ", message=" + messageNumber);
 			}
-		}
-		
-		public void connectionClosed() {
-			setCurrentState(deadState);
 		}
 		
 		@Override
@@ -785,8 +779,6 @@ public class SessionImpl
 		
 		@Override
 		public StartChannelResponse channelStartRequested(int channelNumber, ProfileInfo[] profiles) {
-			validateChannelNumber(channelNumber);
-
 			debug("start of channel ", channelNumber, " requested by remote peer: ", Arrays.toString(profiles));
 			DefaultStartChannelRequest request = new DefaultStartChannelRequest(profiles);
 			sessionHandler.channelStartRequested(request);
@@ -872,26 +864,17 @@ public class SessionImpl
 		
 		@Override
 		public void closeSession() {
-			setCurrentState(waitForResponseState);
+			// TODO: do not allow session close if there are still open channels
+			setCurrentState(closeInitiatedState);
 			channelManagementProfile.closeSession(new CloseCallback() {
 				public void closeDeclined(int code, String message) {
-					debug("close session declined by remote peer: " + code + ":" + message);
-					lock();
-					try {
-						performClose();
-					} finally {
-						unlock();
-					}
+					Assert.holdsLock("session", sessionLock);
+					performClose();
 				}
 			
 				public void closeAccepted() {
-					debug("close session accepted by remote peer");
-					lock();
-					try {
-						performClose();
-					} finally {
-						unlock();
-					}
+					Assert.holdsLock("session", sessionLock);
+					performClose();
 				}
 				
 				private void performClose() {
@@ -933,14 +916,6 @@ public class SessionImpl
 			}
 		}
 		
-		public void connectionClosed() {
-			try {
-				sessionHandler.sessionClosed();
-			} finally {
-				setCurrentState(deadState);
-			}
-		}
-		
 		@Override
 		public String toString() {
 			return "<alive>";
@@ -948,7 +923,7 @@ public class SessionImpl
 		
 	}
 	
-	protected class WaitForResponseState extends AliveState {
+	protected class CloseInitiatedState extends AliveState {
 		
 		@Override
 		public String getName() {

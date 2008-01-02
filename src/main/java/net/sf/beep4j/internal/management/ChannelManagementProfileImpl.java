@@ -154,6 +154,9 @@ public class ChannelManagementProfileImpl implements ChannelManagementProfile {
 	private void validateStartChannelRequest(
 			final int channelNumber,
 			final Reply reply) {
+		if (channelNumber <= 0) {
+			throw new ProtocolException(channelNumber + " is an illegal channel number");
+		}
 		if (initiator && channelNumber % 2 != 0) {
 			reply.sendERR(builder.createError(
 					createMessageBuilder(), 501, "number attribute in <start> element must be odd valued"));
