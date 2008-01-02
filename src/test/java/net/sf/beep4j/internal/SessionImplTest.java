@@ -19,6 +19,7 @@ import net.sf.beep4j.ChannelHandler;
 import net.sf.beep4j.Message;
 import net.sf.beep4j.MessageStub;
 import net.sf.beep4j.NullCloseChannelCallback;
+import net.sf.beep4j.Reply;
 import net.sf.beep4j.ReplyHandler;
 import net.sf.beep4j.SessionHandler;
 import net.sf.beep4j.internal.management.BEEPError;
@@ -30,6 +31,8 @@ import net.sf.beep4j.internal.stream.MessageHandler;
 import org.apache.mina.transport.vmpipe.VmPipeAddress;
 import org.jmock.Mock;
 import org.jmock.MockObjectTestCase;
+import org.jmock.core.Invocation;
+import org.jmock.core.Stub;
 
 public class SessionImplTest extends MockObjectTestCase {
 	
@@ -98,18 +101,32 @@ public class SessionImplTest extends MockObjectTestCase {
 		
 		// define expectations
 		beepStreamMock.expects(once()).method("channelStarted").with(eq(0));
+		beepStreamMock.expects(once()).method("sendRPY").withAnyArguments();
 		profileMock.expects(once()).method("createChannelHandler").with(ANYTHING).will(returnValue(channelHandler));
-		profileMock.expects(once()).method("receivedGreeting").with(same(greeting));
+		profileMock.expects(once()).method("receivedGreeting").withAnyArguments().will(returnValue(new Greeting(new String[0], new String[0], new String[0])));
+		profileMock.expects(once()).method("sendGreeting").withAnyArguments().will(new Stub() {
+			public StringBuffer describeTo(StringBuffer buffer) {
+				buffer.append("send greeting");
+				return buffer;
+			}
+			public Object invoke(Invocation invocation) throws Throwable {
+				Reply reply = (Reply) invocation.parameterValues.get(1);
+				reply.sendRPY(new MessageStub());
+				return null;
+			}
+		});
 		channelHandlerMock.expects(once()).method("messageReceived").with(same(message), ANYTHING);
+		sessionHandlerMock.expects(once()).method("connectionEstablished").with(ANYTHING);
 		sessionHandlerMock.expects(once()).method("sessionOpened").with(ANYTHING);
 
 		// test
-		MessageHandler session = new SessionImpl(false, sessionHandler, beepStream) {
+		SessionImpl session = new SessionImpl(false, sessionHandler, beepStream) {
 			@Override
 			protected ChannelManagementProfile createChannelManagementProfile(boolean initiator) {
 				return profile;
 			}
 		};
+		session.connectionEstablished(null);
 		session.receiveRPY(0, 0, greeting);
 		session.receiveMSG(0, 0, message);
 	}

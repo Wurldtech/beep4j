@@ -74,9 +74,9 @@ public class SessionImpl
 	
 	private final Map<Integer,Sequence<Integer>> messageNumberSequences = new HashMap<Integer,Sequence<Integer>>();
 	
-	private final Map<Integer,LinkedList<ReplyHandlerHolder>> replyListeners = new HashMap<Integer,LinkedList<ReplyHandlerHolder>>();
+	private final Map<Integer,LinkedList<ReplyHandlerHolder>> replyHolders = new HashMap<Integer,LinkedList<ReplyHandlerHolder>>();
 	
-	private final Map<String,Reply> responseHandlers = new HashMap<String,Reply>();
+	private final Map<String,Reply> replies = new HashMap<String,Reply>();
 	
 	private final Map<Integer,Channel> channels = new HashMap<Integer,Channel>();
 	
@@ -108,6 +108,11 @@ public class SessionImpl
 	 * The greeting received from the other peer.
 	 */
 	private Greeting greeting;
+	
+	/**
+	 * Whether the greeting has already been sent.
+	 */
+	private boolean greetingSent;
 	
 	public SessionImpl(boolean initiator, SessionHandler sessionHandler, BeepStream beepStream) {
 		Assert.notNull("sessionHandler", sessionHandler);
@@ -149,12 +154,6 @@ public class SessionImpl
 	
 	private ChannelHandler initChannel(InternalChannel channel, ChannelHandler handler) {
 		return new ChannelHandlerWrapper(channel.initChannel(handler), sessionLock);
-	}
-
-	protected Reply createReply(BeepStream mapping, int channelNumber, int messageNumber) {
-		Reply responseHandler = new DefaultReply(mapping, channelNumber, messageNumber);
-		setReply(channelNumber, messageNumber, responseHandler);
-		return responseHandler;
 	}
 	
 	protected void lock() {
@@ -211,8 +210,7 @@ public class SessionImpl
 		for (int i = 0; i < list.length; i++) {
 			SessionListener listener = list[i];
 			listener.channelStarted(channel);
-		}
-		
+		}	
 	}
 
 	protected void fireChannelClosed(int channel) {
@@ -228,43 +226,61 @@ public class SessionImpl
 		return channelNumberSequence.next();
 	}
 	
-	private boolean hasOpenChannels() {
+	protected boolean hasOpenChannels() {
 		return channels.size() > 1;
 	}
 
-	private void registerChannel(int channelNumber, Channel channel, ChannelHandler handler) {
+	protected void registerChannel(int channelNumber, Channel channel, ChannelHandler handler) {
 		channels.put(channelNumber, channel);
 		channelHandlers.put(channelNumber, handler);
 		messageNumberSequences.put(channelNumber, new IntegerSequence(1, 1));
-		replyListeners.put(channelNumber, new LinkedList<ReplyHandlerHolder>());
+		replyHolders.put(channelNumber, new LinkedList<ReplyHandlerHolder>());
 		fireChannelStarted(channelNumber);
 	}
 
-	private void unregisterChannel(int channelNumber) {
+	protected void unregisterChannel(int channelNumber) {
 		channels.remove(channelNumber);
 		channelHandlers.remove(channelNumber);
 		messageNumberSequences.remove(channelNumber);
-		replyListeners.remove(channelNumber);
+		replyHolders.remove(channelNumber);
 		fireChannelClosed(channelNumber);
 	}
+	
+	// --> start of reply handler related methods (incoming) <--
+	
+	protected ReplyHandlerHolder getReplyHandler(int channelNumber, int messageNumber) {
+		LinkedList<ReplyHandlerHolder> listeners = replyHolders.get(channelNumber);
+		if (listeners.isEmpty()) {
+			throw new ProtocolException("received a reply but expects no outstanding replies");
+		}
+		return listeners.getFirst();
+	}
 
-	private void registerReplyListener(int channelNumber, int messageNumber, ReplyHandler listener) {
-		LinkedList<ReplyHandlerHolder> expectedReplies = replyListeners.get(channelNumber);
+	protected void registerReplyHandler(int channelNumber, int messageNumber, ReplyHandler handler) {
+		LinkedList<ReplyHandlerHolder> expectedReplies = replyHolders.get(channelNumber);
 		if (channelNumber == 0) {
 			// channel 0 is managed by the channel management profile
 			// that profile must be executed while holding the session lock
 			// thus no unlocking / locking should be done while caling the ReplyHandler
-			expectedReplies.addLast(new ReplyHandlerHolder(messageNumber, listener));
+			expectedReplies.addLast(new ReplyHandlerHolder(messageNumber, handler));
 		} else {
 			// ensures that when the application is called, no locks are held
-			expectedReplies.addLast(new ReplyHandlerHolder(messageNumber, listener, sessionLock));			
+			expectedReplies.addLast(new ReplyHandlerHolder(messageNumber, handler, sessionLock));			
 		}
 	}
 	
-	private ReplyHandlerHolder unregisterReplyListener(int channelNumber) {
-		LinkedList<ReplyHandlerHolder> listeners = replyListeners.get(channelNumber);
-		return listeners.removeFirst();
+	protected ReplyHandlerHolder unregisterReplyHandler(final int channelNumber, final int messageNumber) {
+		LinkedList<ReplyHandlerHolder> holders = replyHolders.get(channelNumber);
+		ReplyHandlerHolder holder = holders.removeFirst();
+		if (messageNumber != holder.getMessageNumber()) {
+			throw new ProtocolException("next expected reply has message number " 
+					+ holder.getMessageNumber()
+					+ "; received reply had message number " + messageNumber);
+		}
+		return holder;
 	}
+
+	// --> end of reply handler related methods (incoming) <--
 
 	private int getNextMessageNumber(int channelNumber) {
 		Sequence<Integer> sequence = getMessageNumberSequence(channelNumber);
@@ -280,22 +296,30 @@ public class SessionImpl
 		return result;
 	}
 	
-	private ReplyHandlerHolder getReplyListener(int channelNumber, int messageNumber) {
-		LinkedList<ReplyHandlerHolder> listeners = replyListeners.get(channelNumber);
-		if (listeners.isEmpty()) {
-			throw new ProtocolException("received a reply but expects no outstanding replies");
+	// --> start of methods related to replies (outgoing) <--
+	
+	protected Reply createReply(BeepStream mapping, int channelNumber, int messageNumber) {
+		Reply reply = new DefaultReply(mapping, channelNumber == 0 ? null : sessionLock, channelNumber, messageNumber);
+		registerReply(channelNumber, messageNumber, reply);
+		return reply;
+	}
+	
+	protected Reply getReply(int channelNumber, int messageNumber) {
+		return replies.get(key(channelNumber, messageNumber));
+	}
+	
+	protected void registerReply(int channelNumber, int messageNumber, Reply reply) {
+		replies.put(key(channelNumber, messageNumber), reply);
+	}
+	
+	protected void replyCompleted(int channelNumber, int messageNumber) {
+		Reply reply = replies.remove(key(channelNumber, messageNumber));
+		if (reply == null) {
+			throw new IllegalStateException("completed reply that does no longer exist");
 		}
-		return listeners.getFirst();
 	}
 	
-	private Reply getReply(int channelNumber, int messageNumber) {
-		Reply handler = responseHandlers.get(key(channelNumber, messageNumber));
-		return handler;
-	}
-	
-	private void setReply(int channelNumber, int messageNumber, Reply responseHandler) {
-		responseHandlers.put(key(channelNumber, messageNumber), responseHandler);
-	}
+	// --> end of methods related to replies (outgoing) <--
 	
 	private ChannelHandler getChannelHandler(int channelNumber) {
 		return channelHandlers.get(channelNumber);
@@ -305,8 +329,11 @@ public class SessionImpl
 		return channelNumber + ":" + messageNumber;
 	}
 	
-	private void replyCompleted(int channelNumber, int messageNumber) {
-		responseHandlers.remove(key(channelNumber, messageNumber));
+	protected void checkInitialAliveTransition() {
+		if (greeting != null && greetingSent) {
+			setCurrentState(aliveState);
+			sessionHandler.sessionOpened(SessionImpl.this);
+		}
 	}
 	
 	// --> start of Session methods <--
@@ -669,7 +696,7 @@ public class SessionImpl
 		
 		public void connectionEstablished(SocketAddress address) {
 			Reply reply = new InitialReply(beepStream);
-			setReply(0, 0, reply);
+			registerReply(0, 0, reply);
 			
 			DefaultStartSessionRequest request = new DefaultStartSessionRequest(!initiator);
 			sessionHandler.connectionEstablished(request);
@@ -680,6 +707,8 @@ public class SessionImpl
 				beepStream.closeTransport();
 			} else {
 				channelManagementProfile.sendGreeting(request.getProfiles(), reply);
+				greetingSent = true;
+				checkInitialAliveTransition();
 			}
 		}
 		
@@ -701,11 +730,10 @@ public class SessionImpl
 					+ "was NUL channel=" + channelNumber + ",message=" + messageNumber);
 		}
 		
-		public void receiveRPY(int channelNumber, int messageNumber, Message message) {
+		public void receiveRPY(final int channelNumber, final int messageNumber, final Message message) {
 			validateMessage(channelNumber, messageNumber);
 			greeting = channelManagementProfile.receivedGreeting(message);
-			setCurrentState(aliveState);
-			sessionHandler.sessionOpened(SessionImpl.this);
+			checkInitialAliveTransition();
 		}
 		
 		public void receiveERR(int channelNumber, int messageNumber, Message message) {
@@ -773,7 +801,7 @@ public class SessionImpl
 		public void sendMessage(int channelNumber, Message message, ReplyHandler listener) {
 			int messageNumber = getNextMessageNumber(channelNumber);
 			debug("send message: channel=", channelNumber, ",message=", messageNumber);
-			registerReplyListener(channelNumber, messageNumber, listener);
+			registerReplyHandler(channelNumber, messageNumber, listener);
 			beepStream.sendMSG(channelNumber, messageNumber, message);
 		}
 		
@@ -822,43 +850,42 @@ public class SessionImpl
 			}
 			reply = createReply(beepStream, channelNumber, messageNumber);
 			
-			ChannelHandler handler = getChannelHandler(channelNumber);
-			handler.messageReceived(message, reply);
+			getChannelHandler(channelNumber).messageReceived(message, reply);
 		}
 
 		@Override
 		public void receiveANS(int channelNumber, int messageNumber, int answerNumber, Message message) {
-			ReplyHandlerHolder listener = getReplyListener(channelNumber, messageNumber);
-			listener.receivedANS(channelNumber, messageNumber, message);
+			ReplyHandlerHolder holder = getReplyHandler(channelNumber, messageNumber);
+			holder.receivedANS(channelNumber, messageNumber, message);
 		}
 		
 		@Override
 		public void receiveNUL(int channelNumber, int messageNumber) {
-			ReplyHandlerHolder listener = getReplyListener(channelNumber, messageNumber);
+			ReplyHandlerHolder holder = getReplyHandler(channelNumber, messageNumber);
 			try {
-				listener.receivedNUL(channelNumber, messageNumber);
+				holder.receivedNUL(channelNumber, messageNumber);
 			} finally {
-				unregisterReplyListener(channelNumber);
+				unregisterReplyHandler(channelNumber, messageNumber);
 			}
 		}
 
 		@Override
 		public void receiveERR(int channelNumber, int messageNumber, Message message) {
-			ReplyHandlerHolder listener = getReplyListener(channelNumber, messageNumber);
+			ReplyHandlerHolder holder = getReplyHandler(channelNumber, messageNumber);
 			try {
-				listener.receivedERR(channelNumber, messageNumber, message);
+				holder.receivedERR(channelNumber, messageNumber, message);
 			} finally {
-				unregisterReplyListener(channelNumber);
+				unregisterReplyHandler(channelNumber, messageNumber);
 			}
 		}
 
 		@Override
 		public void receiveRPY(int channelNumber, int messageNumber, Message message) {
-			ReplyHandlerHolder listener = getReplyListener(channelNumber, messageNumber);
+			ReplyHandlerHolder holder = getReplyHandler(channelNumber, messageNumber);
 			try {
-				listener.receivedRPY(channelNumber, messageNumber, message);
+				holder.receivedRPY(channelNumber, messageNumber, message);
 			} finally {
-				unregisterReplyListener(channelNumber);
+				unregisterReplyHandler(channelNumber, messageNumber);
 			}
 		}
 		
@@ -976,6 +1003,8 @@ public class SessionImpl
 		
 		private final BeepStream mapping;
 		
+		private final ReentrantLock lock;
+		
 		private final int channel;
 		
 		private final int messageNumber;
@@ -984,11 +1013,24 @@ public class SessionImpl
 		
 		private boolean complete;
 		
-		public DefaultReply(BeepStream mapping, int channel, int messageNumber) {
+		public DefaultReply(BeepStream mapping, ReentrantLock lock, int channel, int messageNumber) {
 			Assert.notNull("mapping", mapping);
 			this.mapping = mapping;
+			this.lock = lock;
 			this.channel = channel;
 			this.messageNumber = messageNumber;
+		}
+		
+		private void lock() {
+			if (lock != null) {
+				lock.lock();
+			}
+		}
+		
+		private void unlock() {
+			if (lock != null) {
+				lock.unlock();
+			}
 		}
 		
 		private void checkCompletion() {
@@ -1057,7 +1099,7 @@ public class SessionImpl
 	protected class InitialReply extends DefaultReply {
 		
 		public InitialReply(BeepStream mapping) {
-			super(mapping, 0, 0);
+			super(mapping, null, 0, 0);
 		}
 		
 		@Override

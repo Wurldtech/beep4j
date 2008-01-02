@@ -13,7 +13,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package net.sf.beep4j.internal;
 
 import java.util.concurrent.locks.ReentrantLock;
@@ -37,6 +36,10 @@ class ReplyHandlerHolder {
 		this.messageNumber = messageNumber;
 		this.replyHandler = replyHandler;
 		this.lock = lock;
+	}
+	
+	int getMessageNumber() {
+		return messageNumber;
 	}
 	
 	private void lock() {
