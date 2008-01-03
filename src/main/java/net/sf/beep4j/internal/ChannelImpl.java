@@ -135,6 +135,7 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 	
 	public void channelClosed() {
 		channelHandler.channelClosed();
+		setState(new Dead());
 	}
 	
 	public void channelCloseRequested(CloseChannelRequest request) {
@@ -332,7 +333,6 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 					public void closeAccepted() {
 						channelClosed();
 						callback.closeAccepted();
-						setState(new Dead());
 					}
 				});
 			}
@@ -348,9 +348,7 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 		@Override
 		public void closeRequested(CloseChannelRequest request) {
 			callback.closeAccepted();
-			channelClosed();
 			request.accept();
-			setState(new Dead());
 		}
 		
 	}
@@ -374,12 +372,10 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 				DefaultCloseChannelRequest request = new DefaultCloseChannelRequest();
 				channelHandler.channelCloseRequested(request);
 				if (request.isAccepted()) {
-					channelHandler.channelClosed();
-					setState(new Dead());
 					this.request.accept();
 				} else {
-					setState(new Alive());
 					this.request.reject();
+					setState(new Alive());
 				}
 			}
 		}

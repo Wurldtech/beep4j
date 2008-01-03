@@ -107,11 +107,6 @@ public class SessionImpl
 	 */
 	private Greeting greeting;
 	
-	/**
-	 * Whether the greeting has already been sent.
-	 */
-	private boolean greetingSent;
-	
 	public SessionImpl(boolean initiator, SessionHandler sessionHandler, BeepStream beepStream) {
 		Assert.notNull("sessionHandler", sessionHandler);
 		Assert.notNull("beepStream", beepStream);
@@ -257,7 +252,7 @@ public class SessionImpl
 		if (channelNumber == 0) {
 			// channel 0 is managed by the channel management profile
 			// that profile must be executed while holding the session lock
-			// thus no unlocking / locking should be done while caling the ReplyHandler
+			// thus no unlocking / locking should be done while calling the ReplyHandler
 			expectedReplies.addLast(new ReplyHandlerHolder(messageNumber, handler));
 		} else {
 			// ensures that when the application is called, no locks are held
@@ -289,8 +284,8 @@ public class SessionImpl
 		return reply;
 	}
 	
-	protected Reply getReply(int channelNumber, int messageNumber) {
-		return replies.get(key(channelNumber, messageNumber));
+	protected boolean hasReply(int channelNumber, int messageNumber) {
+		return replies.containsKey(key(channelNumber, messageNumber));
 	}
 	
 	protected void registerReply(int channelNumber, int messageNumber, Reply reply) {
@@ -317,7 +312,7 @@ public class SessionImpl
 	}
 	
 	protected void checkInitialAliveTransition() {
-		if (greeting != null && greetingSent) {
+		if (greeting != null) {
 			setCurrentState(aliveState);
 			sessionHandler.sessionOpened(SessionImpl.this);
 		}
@@ -691,8 +686,6 @@ public class SessionImpl
 				beepStream.closeTransport();
 			} else {
 				channelManagementProfile.sendGreeting(request.getProfiles(), reply);
-				greetingSent = true;
-				checkInitialAliveTransition();
 			}
 		}
 		
@@ -819,8 +812,7 @@ public class SessionImpl
 		
 		@Override
 		public void receiveMSG(int channelNumber, int messageNumber, Message message) {
-			Reply reply = getReply(channelNumber, messageNumber);
-			if (reply != null) {
+			if (hasReply(channelNumber, messageNumber)) {
 				// Validation of frames according to the BEEP specification section 2.2.1.1.
 				//
 				// A frame is poorly formed if the header starts with "MSG", and 
@@ -831,8 +823,8 @@ public class SessionImpl
 						+ "that has been received but for which a reply has not been "
 						+ "completely sent.");
 			}
-			reply = createReply(beepStream, channelNumber, messageNumber);
 			
+			Reply reply = createReply(beepStream, channelNumber, messageNumber);
 			getChannelHandler(channelNumber).messageReceived(message, reply);
 		}
 

@@ -100,12 +100,34 @@
 - logging
   - net.sf.beep4j.transport: logging of transport layer events
   - net.sf.beep4j.transport.DATA: all data passing through the transport layer
-  
-  
+
+- refactoring SessionImpl
+  - delegate as much as possible to InternalChannel / ChannelHandler
+  - get rid of those maps that contain the channelNumber as key
+  - no longer use ChannelHandler from session?
+  - instead use InternalChannel interface to communicate with channels?
+  - session only needs to know InternalChannel per channel
+
+- testing ChannelImpl
+
+- session message bus
+
+  MessageBus
+  +dispatchEvent(o:Object)
+
 - sequence of message calls
+  - first notify application
+  - then do the real work
+  - rational: the application knows about the event; 
+  - e.g. before it is no longer possible to use a Channel 
 
 - starting channel
 
   Session#startChannel
   ChannelHandler#channelOpened
+  
+- closing channel
+
+  Channel#close
+  
   
