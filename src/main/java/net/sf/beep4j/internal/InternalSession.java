@@ -22,8 +22,23 @@ import net.sf.beep4j.Session;
 
 public interface InternalSession extends Session {
 	
-	void sendMessage(int channelNumber, Message message, ReplyHandler listener);
+	/**
+	 * Sends a message on the given channel with the given message number and message. The reply
+	 * handler is to be notified when the corresponding reply is received.
+	 * 
+	 * @param channelNumber the channel on which to send the message
+	 * @param messageNumber the message number of that message
+	 * @param message the message to be sent
+	 * @param replyHandler the handler for the reply
+	 */
+	void sendMessage(int channelNumber, int messageNumber, Message message, ReplyHandler replyHandler);
 	
+	/**
+	 * Requests to close the specified channel.
+	 * 
+	 * @param channelNumber the channel number
+	 * @param callback the callback to be notified about the outcome
+	 */
 	void requestChannelClose(int channelNumber, final CloseChannelCallback callback);
 	
 }

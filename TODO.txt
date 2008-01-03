@@ -100,3 +100,12 @@
 - logging
   - net.sf.beep4j.transport: logging of transport layer events
   - net.sf.beep4j.transport.DATA: all data passing through the transport layer
+  
+  
+- sequence of message calls
+
+- starting channel
+
+  Session#startChannel
+  ChannelHandler#channelOpened
+  

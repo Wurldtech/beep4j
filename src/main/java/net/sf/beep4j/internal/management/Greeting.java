@@ -52,9 +52,9 @@ public final class Greeting {
 		Assert.notNull("localize", localize);
 		Assert.notNull("features", features);
 		Assert.notNull("profiles", profiles);
-		this.localize = localize;
-		this.features = features;
-		this.profiles = profiles;
+		this.localize = localize.clone();
+		this.features = features.clone();
+		this.profiles = profiles.clone();
 	}
 	
 	/**
@@ -63,7 +63,7 @@ public final class Greeting {
 	 * @return feature token array
 	 */
 	public String[] getFeatures() {
-		return features;
+		return features.clone();
 	}
 	
 	/**
@@ -72,7 +72,7 @@ public final class Greeting {
 	 * @return localize token array
 	 */
 	public String[] getLocalize() {
-		return localize;
+		return localize.clone();
 	}
 	
 	/**
@@ -81,7 +81,7 @@ public final class Greeting {
 	 * @return profile URI array
 	 */
 	public String[] getProfiles() {
-		return profiles;
+		return profiles.clone();
 	}
 	
 	@Override

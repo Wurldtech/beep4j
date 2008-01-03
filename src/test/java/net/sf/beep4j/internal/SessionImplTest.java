@@ -54,7 +54,7 @@ public class SessionImplTest extends MockObjectTestCase {
 		sessionHandlerMock = mock(SessionHandler.class);
 		sessionHandler = (SessionHandler) sessionHandlerMock.proxy();
 	}
-	
+		
 	// --> test TransportContext methods <--
 	
 	public void testConnectionEstablished() throws Exception {
@@ -168,18 +168,21 @@ public class SessionImplTest extends MockObjectTestCase {
 		// define expectations
 		beepStreamMock.expects(once()).method("channelStarted").with(eq(0));
 		profileMock.expects(once()).method("createChannelHandler").with(ANYTHING).will(returnValue(channelHandler));
+		profileMock.expects(once()).method("sendGreeting").withAnyArguments();
 		profileMock.expects(once()).method("receivedGreeting")
 				.with(same(message))
 				.will(returnValue(new Greeting(new String[0], new String[0], new String[] { "abc" })));
+		sessionHandlerMock.expects(once()).method("connectionEstablished").withAnyArguments();
 		sessionHandlerMock.expects(once()).method("sessionOpened").with(ANYTHING);
 		
 		// test
-		MessageHandler session = new SessionImpl(false, sessionHandler, beepStream) {
+		SessionImpl session = new SessionImpl(false, sessionHandler, beepStream) {
 			@Override
 			protected ChannelManagementProfile createChannelManagementProfile(boolean initiator) {
 				return profile;
 			}
 		};
+		session.connectionEstablished(null);
 		session.receiveRPY(0, 0, message);
 	}
 	
@@ -196,9 +199,11 @@ public class SessionImplTest extends MockObjectTestCase {
 		Message reply = new MessageStub();
 		
 		// define expectations
+		sessionHandlerMock.expects(once()).method("connectionEstablished").withAnyArguments();
 		sessionHandlerMock.expects(once()).method("sessionOpened").with(ANYTHING);
 		beepStreamMock.expects(once()).method("channelStarted").with(eq(0));
 		profileMock.expects(once()).method("createChannelHandler").with(ANYTHING).will(returnValue(channelHandler));
+		profileMock.expects(once()).method("sendGreeting").withAnyArguments();
 		profileMock.expects(once()).method("receivedGreeting")
 				.with(same(greeting))
 				.will(returnValue(new Greeting(new String[0], new String[0], new String[] { "abc" })));
@@ -213,8 +218,9 @@ public class SessionImplTest extends MockObjectTestCase {
 				return profile;
 			}
 		};
+		session.connectionEstablished(null);
 		session.receiveRPY(0, 0, greeting);
-		session.sendMessage(0, message, replyListener);
+		session.sendMessage(0, 1, message, replyListener);
 		session.receiveRPY(0, 1, reply);
 	}
 	

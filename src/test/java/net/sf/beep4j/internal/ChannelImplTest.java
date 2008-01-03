@@ -117,10 +117,10 @@ public class ChannelImplTest extends MockObjectTestCase {
 		// define expectations
 		// TODO setup ordering constraints
 		ParameterCaptureStub<ReplyHandler> capture = 
-			new ParameterCaptureStub<ReplyHandler>(2, ReplyHandler.class, null);
+			new ParameterCaptureStub<ReplyHandler>(3, ReplyHandler.class, null);
 		
 		sessionMock.expects(once()).method("sendMessage")
-				.with(eq(1), same(message), ANYTHING)
+				.with(eq(1), eq(1), same(message), ANYTHING)
 				.will(capture);
 		
 		sessionMock.expects(once()).method("requestChannelClose")
@@ -157,7 +157,7 @@ public class ChannelImplTest extends MockObjectTestCase {
 				.with(eq(550), eq("still working"));
 		
 		sessionMock.expects(once()).method("sendMessage")
-				.with(eq(1), same(message), ANYTHING);
+				.with(eq(1), eq(1), same(message), ANYTHING);
 		
 		// test
 		channel.close(callback);
@@ -175,10 +175,10 @@ public class ChannelImplTest extends MockObjectTestCase {
 		// define expectations
 		// TODO: define ordering constraints
 		ParameterCaptureStub<ReplyHandler> capture = 
-			new ParameterCaptureStub<ReplyHandler>(2, ReplyHandler.class, null);
+			new ParameterCaptureStub<ReplyHandler>(3, ReplyHandler.class, null);
 		
 		sessionMock.expects(once()).method("sendMessage")
-				.with(eq(1), same(m1), ANYTHING)
+				.with(eq(1), eq(1), same(m1), ANYTHING)
 				.will(capture);
 		
 		sessionMock.expects(once()).method("requestChannelClose")
@@ -189,7 +189,7 @@ public class ChannelImplTest extends MockObjectTestCase {
 				.with(eq(550), eq("still working"));
 		
 		sessionMock.expects(once()).method("sendMessage")
-				.with(eq(1), same(m2), ANYTHING);
+				.with(eq(1), eq(2), same(m2), ANYTHING);
 		
 		// test
 		channel.sendMessage(m1, new NullReplyHandler());
@@ -230,11 +230,11 @@ public class ChannelImplTest extends MockObjectTestCase {
 		Message message = new MessageStub();
 		
 		ParameterCaptureStub<ReplyHandler> capture =
-			new ParameterCaptureStub<ReplyHandler>(2, ReplyHandler.class, null);
+			new ParameterCaptureStub<ReplyHandler>(3, ReplyHandler.class, null);
 		
 		// define expectations
 		sessionMock.expects(once()).method("sendMessage")
-				.with(eq(1), same(message), ANYTHING)
+				.with(eq(1), eq(1), same(message), ANYTHING)
 				.will(capture);
 		
 		channelHandlerMock.expects(once()).method("channelCloseRequested")
@@ -283,11 +283,11 @@ public class ChannelImplTest extends MockObjectTestCase {
 		Message m2 = new MessageStub();
 		
 		ParameterCaptureStub<ReplyHandler> capture =
-			new ParameterCaptureStub<ReplyHandler>(2, ReplyHandler.class, null);
+			new ParameterCaptureStub<ReplyHandler>(3, ReplyHandler.class, null);
 		
 		// define expectations
 		sessionMock.expects(once()).method("sendMessage")
-				.with(eq(1), same(m1), ANYTHING)
+				.with(eq(1), eq(1), same(m1), ANYTHING)
 				.will(capture);
 		
 		channelHandlerMock.expects(once()).method("channelCloseRequested")
@@ -295,7 +295,7 @@ public class ChannelImplTest extends MockObjectTestCase {
 				.will(new CloseRejectingRequest(0));
 		
 		sessionMock.expects(once()).method("sendMessage")
-				.with(eq(1), same(m2), ANYTHING);
+				.with(eq(1), eq(2), same(m2), ANYTHING);
 		
 		Mock mock = mock(CloseChannelRequest.class);
 		mock.expects(once()).method("reject");

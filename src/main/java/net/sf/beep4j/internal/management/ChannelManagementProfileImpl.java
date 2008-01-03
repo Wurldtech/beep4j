@@ -26,6 +26,8 @@ import net.sf.beep4j.internal.DefaultCloseChannelRequest;
 import net.sf.beep4j.internal.SessionManager;
 import net.sf.beep4j.internal.StartChannelResponse;
 import net.sf.beep4j.internal.message.DefaultMessageBuilder;
+import net.sf.beep4j.internal.util.IntegerSequence;
+import net.sf.beep4j.internal.util.Sequence;
 
 /**
  * Implementation of ChannelManagementProfile interface.
@@ -41,6 +43,8 @@ public class ChannelManagementProfileImpl implements ChannelManagementProfile {
 	private final ChannelManagementMessageBuilder builder;
 	
 	private final ChannelManagementMessageParser parser; 
+	
+	private final Sequence<Integer> messageNumberSequence = new IntegerSequence(1, 1);
 	
 	public ChannelManagementProfileImpl(boolean initiator) {
 		this.initiator = initiator;
@@ -96,8 +100,9 @@ public class ChannelManagementProfileImpl implements ChannelManagementProfile {
 			final int channelNumber, 
 			final ProfileInfo[] infos, 
 			final StartChannelCallback callback) {
+		int messageNumber = messageNumberSequence.next(); 
 		Message message = builder.createStart(createMessageBuilder(), channelNumber, infos);
-		manager.sendChannelManagementMessage(message, new ManagementReplyHandler() {
+		manager.sendChannelManagementMessage(messageNumber, message, new ManagementReplyHandler() {
 			
 			public void receivedRPY(Message message) {
 				ProfileInfo profile = parser.parseProfile(message);
@@ -113,8 +118,9 @@ public class ChannelManagementProfileImpl implements ChannelManagementProfile {
 	}
 	
 	public final void closeChannel(final int channelNumber, final CloseCallback callback) {
+		int messageNumber = messageNumberSequence.next();
 		Message message = builder.createClose(createMessageBuilder(), channelNumber, 200);
-		manager.sendChannelManagementMessage(message, new ManagementReplyHandler() {
+		manager.sendChannelManagementMessage(messageNumber, message, new ManagementReplyHandler() {
 		
 			public void receivedRPY(Message message) {
 				parser.parseOk(message);

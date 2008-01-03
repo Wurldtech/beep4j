@@ -26,6 +26,8 @@ import net.sf.beep4j.ReplyHandler;
 import net.sf.beep4j.Session;
 import net.sf.beep4j.internal.message.DefaultMessageBuilder;
 import net.sf.beep4j.internal.util.Assert;
+import net.sf.beep4j.internal.util.IntegerSequence;
+import net.sf.beep4j.internal.util.Sequence;
 
 class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 	
@@ -35,6 +37,8 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 	
 	private final int channelNumber;
 	
+	private final Sequence<Integer> messageNumberSequence = new IntegerSequence(1, 1);
+
 	private ChannelHandler channelHandler;
 	
 	private State state = new Alive();
@@ -98,7 +102,11 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 	public void sendMessage(Message message, ReplyHandler reply) {
 		Assert.notNull("message", message);
 		Assert.notNull("listener", reply);
-		state.sendMessage(message, new ReplyHandlerWrapper(reply));
+		state.sendMessage(message, wrapReplyHandler(reply));
+	}
+
+	private ReplyHandler wrapReplyHandler(ReplyHandler reply) {
+		return new ReplyHandlerWrapper(reply);
 	}
 	
 	public void close(CloseChannelCallback callback) {
@@ -106,9 +114,7 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 		state.closeInitiated(callback);
 	}
 	
-	public void channelClosed() {
-		channelHandler.channelClosed();
-	}
+	// --> start of ChannelHandler methods <--
 	
 	public void channelStartFailed(int code, String message) {
 		channelHandler.channelStartFailed(code, message);
@@ -119,12 +125,23 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 	}
 	
 	public void messageReceived(Message message, Reply reply) {
-		state.messageReceived(message, new ReplyWrapper(reply));		
+		state.messageReceived(message, wrapReply(reply));		
+	}
+
+	protected Reply wrapReply(Reply reply) {
+		incrementOutstandingResponseCount();
+		return new ReplyWrapper(reply);
+	}
+	
+	public void channelClosed() {
+		channelHandler.channelClosed();
 	}
 	
 	public void channelCloseRequested(CloseChannelRequest request) {
 		state.closeRequested(request);
 	}
+	
+	// --> end of ChannelHandler methods <--
 	
 	private synchronized void incrementOutstandingReplyCount() {
 		outstandingReplyCount++;
@@ -167,6 +184,7 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 		private final ReplyHandler target;
 		
 		private ReplyHandlerWrapper(ReplyHandler target) {
+			Assert.notNull("target", target);
 			this.target = target;
 			incrementOutstandingReplyCount();
 		}
@@ -191,13 +209,17 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 		}
 	}
 	
+	/*
+	 * The ReplyWrapper is used to count outstanding replies. This information
+	 * is needed to know when a channel close can be accepted.
+	 */
 	private class ReplyWrapper implements Reply {
 		
 		private final Reply target;
 		
 		private ReplyWrapper(Reply target) {
+			Assert.notNull("target", target);
 			this.target = target;
-			incrementOutstandingResponseCount();
 		}
 		
 		public MessageBuilder createMessageBuilder() {
@@ -228,13 +250,13 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 		
 		void checkCondition();
 		
-		void sendMessage(Message message, ReplyHandler listener);
+		void sendMessage(Message message, ReplyHandler replyHandler);
 		
 		void closeInitiated(CloseChannelCallback callback);
 		
 		void closeRequested(CloseChannelRequest request);
 		
-		void messageReceived(Message message, Reply handler);
+		void messageReceived(Message message, Reply reply);
 		
 	}
 	
@@ -244,7 +266,7 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 			// nothing to check
 		}
 		
-		public void sendMessage(Message message, ReplyHandler listener) {
+		public void sendMessage(Message message, ReplyHandler replyHandler) {
 			throw new IllegalStateException();
 		}
 		
@@ -256,7 +278,7 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 			throw new IllegalStateException();
 		}
 		
-		public void messageReceived(Message message, Reply handler) {
+		public void messageReceived(Message message, Reply reply) {
 			throw new IllegalStateException();
 		}
 	}
@@ -264,13 +286,14 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 	private class Alive extends AbstractState {
 		
 		@Override
-		public void sendMessage(final Message message, final ReplyHandler listener) {
-			session.sendMessage(channelNumber, message, listener);
+		public void sendMessage(final Message message, final ReplyHandler replyHandler) {
+			int messageNumber = messageNumberSequence.next();
+			session.sendMessage(channelNumber, messageNumber, message, replyHandler);
 		}
 		
 		@Override
-		public void messageReceived(Message message, Reply handler) {
-			channelHandler.messageReceived(message, handler);
+		public void messageReceived(Message message, Reply reply) {
+			channelHandler.messageReceived(message, reply);
 		}
 		
 		@Override

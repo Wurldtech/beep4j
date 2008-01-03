@@ -59,9 +59,10 @@ public interface SessionManager {
 	/**
 	 * Sends a message through the session on channel 0.
 	 * 
+	 * @param messageNumber the BEEP message number of that message
 	 * @param message the message to be sent
 	 * @param reply the handler for the reply
 	 */
-	void sendChannelManagementMessage(Message message, ReplyHandler reply);
+	void sendChannelManagementMessage(int messageNumber,Message message, ReplyHandler reply);
 	
 }
