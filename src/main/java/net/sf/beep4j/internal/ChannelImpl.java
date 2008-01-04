@@ -114,7 +114,7 @@ class ChannelImpl implements Channel, InternalChannel {
 		ReplyHandlerHolder holder = replyHandlerHolders.getFirst();
 		if (holder.getMessageNumber() != messageNumber) {
 			throw new ProtocolException("next expected reply on channel "
-					+ "must have message number "
+					+ channelNumber + " must have message number "
 					+ holder.getMessageNumber() + " but was "
 					+ messageNumber);
 		}
