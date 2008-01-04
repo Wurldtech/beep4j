@@ -15,10 +15,10 @@
  */
 package net.sf.beep4j.internal;
 
-import net.sf.beep4j.CloseChannelCallback;
 import net.sf.beep4j.Message;
 import net.sf.beep4j.ReplyHandler;
 import net.sf.beep4j.Session;
+import net.sf.beep4j.internal.management.CloseCallback;
 
 public interface InternalSession extends Session {
 	
@@ -31,7 +31,15 @@ public interface InternalSession extends Session {
 	 * @param message the message to be sent
 	 * @param replyHandler the handler for the reply
 	 */
-	void sendMessage(int channelNumber, int messageNumber, Message message, ReplyHandler replyHandler);
+	void sendMSG(int channelNumber, int messageNumber, Message message, ReplyHandler replyHandler);
+	
+	void sendRPY(int channelNumber, int messageNumber, Message message);
+	
+	void sendERR(int channelNumber, int messageNumber, Message message);
+	
+	void sendANS(int channelNumber, int messageNumber, int answertNumber, Message message);
+	
+	void sendNUL(int channelNumber, int messageNumber);
 	
 	/**
 	 * Requests to close the specified channel.
@@ -39,6 +47,6 @@ public interface InternalSession extends Session {
 	 * @param channelNumber the channel number
 	 * @param callback the callback to be notified about the outcome
 	 */
-	void requestChannelClose(int channelNumber, final CloseChannelCallback callback);
+	void requestChannelClose(int channelNumber, final CloseCallback callback);
 	
 }

@@ -15,10 +15,7 @@
  */
 package net.sf.beep4j.internal;
 
-import net.sf.beep4j.CloseChannelRequest;
-import net.sf.beep4j.Message;
 import net.sf.beep4j.ProfileInfo;
-import net.sf.beep4j.ReplyHandler;
 import net.sf.beep4j.internal.management.CloseCallback;
 
 /**
@@ -41,13 +38,13 @@ public interface SessionManager {
 	
 	/**
 	 * Requests to close the channel identified by the given channel number.
-	 * The request can either be accepted (resulting in a close channel) or
-	 * declined (in which case the channel stays open).
+	 * The callback can be used to either accept (resulting in a close channel) or
+	 * decline (in which case the channel stays open).
 	 * 
 	 * @param channelNumber the channel number
-	 * @param request the close request
+	 * @param callback the callback that gets notified about the outcome
 	 */
-	void channelCloseRequested(int channelNumber, CloseChannelRequest request);
+	void channelCloseRequested(int channelNumber, CloseCallback callback);
 	
 	/**
 	 * Closes the session.
@@ -55,14 +52,5 @@ public interface SessionManager {
 	 * @param callback the callback that gets notified about the outcome
 	 */
 	void sessionCloseRequested(CloseCallback callback);
-	
-	/**
-	 * Sends a message through the session on channel 0.
-	 * 
-	 * @param messageNumber the BEEP message number of that message
-	 * @param message the message to be sent
-	 * @param reply the handler for the reply
-	 */
-	void sendChannelManagementMessage(int messageNumber,Message message, ReplyHandler reply);
 	
 }

@@ -15,21 +15,26 @@
  */
 package net.sf.beep4j.internal;
 
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Map;
+
 import net.sf.beep4j.Channel;
 import net.sf.beep4j.ChannelHandler;
 import net.sf.beep4j.CloseChannelCallback;
-import net.sf.beep4j.CloseChannelRequest;
 import net.sf.beep4j.Message;
 import net.sf.beep4j.MessageBuilder;
+import net.sf.beep4j.ProtocolException;
 import net.sf.beep4j.Reply;
 import net.sf.beep4j.ReplyHandler;
 import net.sf.beep4j.Session;
+import net.sf.beep4j.internal.management.CloseCallback;
 import net.sf.beep4j.internal.message.DefaultMessageBuilder;
 import net.sf.beep4j.internal.util.Assert;
 import net.sf.beep4j.internal.util.IntegerSequence;
 import net.sf.beep4j.internal.util.Sequence;
 
-class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
+class ChannelImpl implements Channel, InternalChannel {
 	
 	private final InternalSession session;
 	
@@ -39,6 +44,10 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 	
 	private final Sequence<Integer> messageNumberSequence = new IntegerSequence(1, 1);
 
+	private final Map<Integer, Reply> replies = new HashMap<Integer, Reply>();
+	
+	private final LinkedList<ReplyHandlerHolder> replyHandlerHolders = new LinkedList<ReplyHandlerHolder>();
+	
 	private ChannelHandler channelHandler;
 	
 	private State state = new Alive();
@@ -64,10 +73,103 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 		this.channelNumber = channelNumber;
 	}
 	
-	public ChannelHandler initChannel(ChannelHandler channelHandler) {
+	public void channelOpened(ChannelHandler channelHandler) {
 		Assert.notNull("channelHandler", channelHandler);
 		this.channelHandler = channelHandler;
-		return this;
+		this.channelHandler.channelOpened(this);
+	}
+	
+	// --> replies to incoming messages <--
+	
+	protected boolean hasReply(int messageNumber) {
+		return replies.containsKey(messageNumber);
+	}
+	
+	protected Reply createReply(InternalSession session, int messageNumber) {
+		Reply reply = new DefaultReply(session, channelNumber, messageNumber);
+		registerReply(messageNumber, reply);
+		return reply;
+	}
+	
+	protected void registerReply(int messageNumber, Reply reply) {
+		replies.put(messageNumber, reply);
+	}
+	
+	protected void replyCompleted(int channelNumber, int messageNumber) {
+		Reply reply = replies.remove(messageNumber);
+		if (reply == null) {
+			throw new IllegalStateException(
+					"completed reply that does no longer exist (channel="
+					+ channelNumber + ",message=" + messageNumber + ")");
+		}
+	}
+	
+	// --> replies to outgoing messages <--
+	
+	private ReplyHandlerHolder getReplyHandlerHolder(final int messageNumber) {
+		if (replyHandlerHolders.isEmpty()) {
+			throw new ProtocolException("received a reply (message=" + messageNumber + ") "
+					+ " on channel " + channelNumber + " but expects no outstanding replies");
+		}
+		ReplyHandlerHolder holder = replyHandlerHolders.getFirst();
+		if (holder.getMessageNumber() != messageNumber) {
+			throw new ProtocolException("next expected reply on channel "
+					+ "must have message number "
+					+ holder.getMessageNumber() + " but was "
+					+ messageNumber);
+		}
+		return holder;
+	}
+	
+	private ReplyHandlerHolder unregisterReplyHandlerHolder(final int messageNumber) {
+		ReplyHandlerHolder holder = replyHandlerHolders.removeFirst();
+		if (messageNumber != holder.getMessageNumber()) {
+			throw new ProtocolException("next expected reply has message number " 
+					+ holder.getMessageNumber()
+					+ "; received reply had message number " + messageNumber);
+		}
+		return holder;
+	}
+
+	private void registerReplyHandler(final int messageNumber, final ReplyHandler handler) {
+		replyHandlerHolders.addLast(new ReplyHandlerHolder(messageNumber, handler));
+	}
+	
+	public void receiveMSG(int messageNumber, Message message) {
+		if (hasReply(messageNumber)) {
+			// Validation of frames according to the BEEP specification section 2.2.1.1.
+			//
+			// A frame is poorly formed if the header starts with "MSG", and 
+			// the message number refers to a "MSG" message that has been 
+			// completely received but for which a reply has not been completely sent.
+			throw new ProtocolException("Message number " + messageNumber
+					+ " on channel " + channelNumber + " refers to a MSG message "
+					+ "that has been received but for which a reply has not been "
+					+ "completely sent.");
+		}
+		
+		Reply reply = createReply(session, messageNumber);
+		state.messageReceived(message, reply);
+	}
+
+	public void receiveRPY(int messageNumber, Message message) {
+		ReplyHandlerHolder holder = getReplyHandlerHolder(messageNumber);
+		state.receiveRPY(holder, message);
+	}
+	
+	public void receiveERR(int messageNumber, Message message) {
+		ReplyHandlerHolder holder = getReplyHandlerHolder(messageNumber);
+		state.receiveERR(holder, message);
+	}
+	
+	public void receiveANS(int messageNumber, int answerNumber, Message message) {
+		ReplyHandlerHolder holder = getReplyHandlerHolder(messageNumber);
+		state.receiveANS(holder, message);
+	}
+	
+	public void receiveNUL(int messageNumber) {
+		ReplyHandlerHolder holder = getReplyHandlerHolder(messageNumber);
+		state.receiveNUL(holder);
 	}
 	
 	public boolean isAlive() {
@@ -113,36 +215,20 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 		Assert.notNull("callback", callback);
 		state.closeInitiated(callback);
 	}
-	
-	// --> start of ChannelHandler methods <--
-	
-	public void channelStartFailed(int code, String message) {
-		channelHandler.channelStartFailed(code, message);
-	}
-	
-	public void channelOpened(Channel c) {
-		channelHandler.channelOpened(this);		
-	}
-	
-	public void messageReceived(Message message, Reply reply) {
-		state.messageReceived(message, wrapReply(reply));		
-	}
 
 	protected Reply wrapReply(Reply reply) {
 		incrementOutstandingResponseCount();
 		return new ReplyWrapper(reply);
 	}
 	
-	public void channelClosed() {
+	public void channelCloseRequested(CloseCallback callback) {
+		state.closeRequested(callback);
+	}
+	
+	protected void doClose() {
 		channelHandler.channelClosed();
 		setState(new Dead());
 	}
-	
-	public void channelCloseRequested(CloseChannelRequest request) {
-		state.closeRequested(request);
-	}
-	
-	// --> end of ChannelHandler methods <--
 	
 	private synchronized void incrementOutstandingReplyCount() {
 		outstandingReplyCount++;
@@ -255,9 +341,17 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 		
 		void closeInitiated(CloseChannelCallback callback);
 		
-		void closeRequested(CloseChannelRequest request);
+		void closeRequested(CloseCallback callback);
 		
 		void messageReceived(Message message, Reply reply);
+		
+		void receiveRPY(ReplyHandlerHolder holder, Message message);
+		
+		void receiveERR(ReplyHandlerHolder holder, Message message);
+		
+		void receiveANS(ReplyHandlerHolder holder, Message message);
+		
+		void receiveNUL(ReplyHandlerHolder holder);
 		
 	}
 	
@@ -275,21 +369,73 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 			throw new IllegalStateException();
 		}
 		
-		public void closeRequested(CloseChannelRequest request) {
+		public void closeRequested(CloseCallback callback) {
 			throw new IllegalStateException();
 		}
 		
 		public void messageReceived(Message message, Reply reply) {
 			throw new IllegalStateException();
 		}
+		
+		public void receiveANS(ReplyHandlerHolder holder, Message message) {
+			throw new IllegalStateException();
+		}
+		
+		public void receiveNUL(ReplyHandlerHolder holder) {
+			throw new IllegalStateException();
+		}
+		
+		public void receiveERR(ReplyHandlerHolder holder, Message message) {
+			throw new IllegalStateException();
+		}
+		
+		public void receiveRPY(ReplyHandlerHolder holder, Message message) {
+			throw new IllegalStateException();
+		}
 	}
 	
-	private class Alive extends AbstractState {
+	private abstract class AbstractReceivingState extends AbstractState {
+		
+		@Override
+		public void receiveANS(ReplyHandlerHolder holder, Message message) {
+			holder.receivedANS(message);
+		}
+		
+		@Override
+		public void receiveNUL(ReplyHandlerHolder holder) {
+			try {
+				holder.receivedNUL();
+			} finally {
+				unregisterReplyHandlerHolder(holder.getMessageNumber());
+			}
+		}
+		
+		@Override
+		public void receiveERR(ReplyHandlerHolder holder, Message message) {
+			try {
+				holder.receivedERR(message);
+			} finally {
+				unregisterReplyHandlerHolder(holder.getMessageNumber());
+			}
+		}
+		
+		@Override
+		public void receiveRPY(ReplyHandlerHolder holder, Message message) {
+			try {
+				holder.receivedRPY(message);
+			} finally {
+				unregisterReplyHandlerHolder(holder.getMessageNumber());
+			}
+		}
+	}
+	
+	private class Alive extends AbstractReceivingState {
 		
 		@Override
 		public void sendMessage(final Message message, final ReplyHandler replyHandler) {
 			int messageNumber = messageNumberSequence.next();
-			session.sendMessage(channelNumber, messageNumber, message, replyHandler);
+			registerReplyHandler(messageNumber, replyHandler);
+			session.sendMSG(channelNumber, messageNumber, message, replyHandler);
 		}
 		
 		@Override
@@ -303,13 +449,13 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 		}
 		
 		@Override
-		public void closeRequested(CloseChannelRequest request) {
-			setState(new CloseRequested(request));
+		public void closeRequested(CloseCallback callback) {
+			setState(new CloseRequested(callback));
 		}
 		
 	}
 	
-	private class CloseInitiated extends AbstractState {
+	private class CloseInitiated extends AbstractReceivingState {
 		
 		private final CloseChannelCallback callback;
 		
@@ -318,21 +464,21 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 		}
 		
 		@Override
-		public void messageReceived(Message message, Reply handler) {
-			channelHandler.messageReceived(message, handler);
+		public void messageReceived(Message message, Reply reply) {
+			channelHandler.messageReceived(message, reply);
 		}
 		
 		@Override
 		public void checkCondition() {
 			if (isReadyToShutdown()) {
-				session.requestChannelClose(channelNumber, new CloseChannelCallback() {
+				session.requestChannelClose(channelNumber, new CloseCallback() {
 					public void closeDeclined(int code, String message) {
 						callback.closeDeclined(code, message);
 						setState(new Alive());
 					}
 					public void closeAccepted() {
-						channelClosed();
 						callback.closeAccepted();
+						doClose();
 					}
 				});
 			}
@@ -346,24 +492,26 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 		 * decision.
 		 */
 		@Override
-		public void closeRequested(CloseChannelRequest request) {
+		public void closeRequested(CloseCallback closeCallback) {
 			callback.closeAccepted();
-			request.accept();
+			doClose();
+			closeCallback.closeAccepted();
 		}
 		
 	}
 	
-	private class CloseRequested extends AbstractState {
+	private class CloseRequested extends AbstractReceivingState {
 		
-		private final CloseChannelRequest request;
+		private final CloseCallback callback;
 		
-		private CloseRequested(CloseChannelRequest request) {
-			this.request = request;
+		private CloseRequested(CloseCallback callback) {
+			this.callback = callback;
 		}
 		
 		@Override
 		public void messageReceived(Message message, Reply handler) {
-			channelHandler.messageReceived(message, handler);
+			throw new ProtocolException("the remote peer is not allowed to send "
+					+ "further messages on a channel after sending a channel close request");
 		}
 		
 		@Override
@@ -372,9 +520,10 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 				DefaultCloseChannelRequest request = new DefaultCloseChannelRequest();
 				channelHandler.channelCloseRequested(request);
 				if (request.isAccepted()) {
-					this.request.accept();
+					doClose();
+					this.callback.closeAccepted();
 				} else {
-					this.request.reject();
+					this.callback.closeDeclined(550, "still working");
 					setState(new Alive());
 				}
 			}
@@ -385,4 +534,67 @@ class ChannelImpl implements Channel, ChannelHandler, InternalChannel {
 		// dead is dead ;)
 	}
 	
+	
+	protected class DefaultReply implements Reply {
+		
+		private final InternalSession session;
+		
+		private final int channel;
+		
+		private final int messageNumber;
+		
+		private int answerNumber = 0;
+		
+		private boolean complete;
+		
+		public DefaultReply(InternalSession session, int channel, int messageNumber) {
+			Assert.notNull("session", session);
+			this.session = session;
+			this.channel = channel;
+			this.messageNumber = messageNumber;
+		}
+		
+		private void checkCompletion() {
+			if (complete) {
+				throw new IllegalStateException("a complete reply has already been sent");
+			}
+		}
+
+		private void complete() {
+			complete = true;
+			replyCompleted(channel, messageNumber);
+		}
+		
+		public MessageBuilder createMessageBuilder() {
+			return new DefaultMessageBuilder();
+		}
+
+		public void sendANS(Message message) {
+			Assert.notNull("message", message);
+			checkCompletion();
+			session.sendANS(channel, messageNumber, answerNumber++, message);
+		}
+		
+		public void sendERR(Message message) {
+			Assert.notNull("message", message);
+			checkCompletion();
+			session.sendERR(channel, messageNumber, message);
+			complete();
+		}
+		
+		public void sendNUL() {
+			checkCompletion();
+			session.sendNUL(channel, messageNumber);
+			complete();
+		}
+		
+		public void sendRPY(Message message) {
+			Assert.notNull("message", message);
+			checkCompletion();
+			session.sendRPY(channel, messageNumber, message);
+			complete();
+		}
+		
+	}
+
 }

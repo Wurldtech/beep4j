@@ -15,7 +15,9 @@
  */
 package net.sf.beep4j;
 
-public class NullCloseChannelCallback implements CloseChannelCallback {
+import net.sf.beep4j.internal.management.CloseCallback;
+
+public class NullCloseCallback implements CloseCallback {
 
 	public void closeAccepted() {
 		// null implementation

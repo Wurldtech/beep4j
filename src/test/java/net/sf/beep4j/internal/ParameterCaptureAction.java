@@ -15,15 +15,16 @@
  */
 package net.sf.beep4j.internal;
 
-import org.jmock.core.Invocation;
-import org.jmock.core.Stub;
+import org.hamcrest.Description;
+import org.jmock.api.Action;
+import org.jmock.api.Invocation;
 
-public class ParameterCaptureStub<T> implements Stub {
+public class ParameterCaptureAction<T> implements Action {
 	private final int index;
 	private final Class<? extends T> type;
-	private final Stub target;
+	private final Action target;
 	private T parameter;
-	public ParameterCaptureStub(int index, Class<? extends T> type, Stub target) {
+	public ParameterCaptureAction(int index, Class<? extends T> type, Action target) {
 		this.index = index;
 		this.type = type;
 		this.target = target;
@@ -31,16 +32,15 @@ public class ParameterCaptureStub<T> implements Stub {
 	public T getParameter() {
 		return parameter;
 	}
-	public StringBuffer describeTo(StringBuffer buf) {
-		buf.append("stub[capture parameter " + index + "]");
-		return buf;
+	public void describeTo(Description description) {
+		description.appendText("stub[capture parameter " + index + "]");
 	}
 	public Object invoke(Invocation invocation) throws Throwable {
-		parameter = type.cast(invocation.parameterValues.get(index));
+		parameter = type.cast(invocation.getParameter(index));
 		if (target != null) {
 			return target.invoke(invocation);
 		} else {
 			return null;
 		}
-	}
+	}	
 }

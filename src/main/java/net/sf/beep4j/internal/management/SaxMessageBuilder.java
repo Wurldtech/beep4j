@@ -39,7 +39,7 @@ import net.sf.beep4j.Message;
 import net.sf.beep4j.MessageBuilder;
 import net.sf.beep4j.ProfileInfo;
 
-public final class SaxMessageBuilder implements ChannelManagementMessageBuilder {
+public final class SaxMessageBuilder implements ManagementMessageBuilder {
 		
 	public Message createClose(MessageBuilder builder, int channelNumber, int code) {
 		WriterHandler handler = new WriterHandler(builder.getWriter());

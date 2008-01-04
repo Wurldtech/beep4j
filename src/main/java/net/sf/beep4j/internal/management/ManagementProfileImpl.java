@@ -22,41 +22,39 @@ import net.sf.beep4j.ProfileInfo;
 import net.sf.beep4j.ProtocolException;
 import net.sf.beep4j.Reply;
 import net.sf.beep4j.ReplyHandler;
-import net.sf.beep4j.internal.DefaultCloseChannelRequest;
+import net.sf.beep4j.internal.InternalChannel;
 import net.sf.beep4j.internal.SessionManager;
 import net.sf.beep4j.internal.StartChannelResponse;
 import net.sf.beep4j.internal.message.DefaultMessageBuilder;
-import net.sf.beep4j.internal.util.IntegerSequence;
-import net.sf.beep4j.internal.util.Sequence;
 
 /**
  * Implementation of ChannelManagementProfile interface.
  * 
  * @author Simon Raess
  */
-public class ChannelManagementProfileImpl implements ChannelManagementProfile {
+public class ManagementProfileImpl implements ManagementProfile {
 	
 	private SessionManager manager;
 	
+	private InternalChannel channel;
+	
 	private final boolean initiator;
 	
-	private final ChannelManagementMessageBuilder builder;
+	private final ManagementMessageBuilder builder;
 	
-	private final ChannelManagementMessageParser parser; 
+	private final ManagementMessageParser parser; 
 	
-	private final Sequence<Integer> messageNumberSequence = new IntegerSequence(1, 1);
-	
-	public ChannelManagementProfileImpl(boolean initiator) {
+	public ManagementProfileImpl(boolean initiator) {
 		this.initiator = initiator;
 		this.builder = createChannelManagementMessageBuilder();
 		this.parser = createChannelManagementMessageParser();
 	}
 
-	protected ChannelManagementMessageBuilder createChannelManagementMessageBuilder() {
+	protected ManagementMessageBuilder createChannelManagementMessageBuilder() {
 		return new SaxMessageBuilder();
 	}
 	
-	protected ChannelManagementMessageParser createChannelManagementMessageParser() {
+	protected ManagementMessageParser createChannelManagementMessageParser() {
 		return new SaxMessageParser();
 	}
 	
@@ -67,20 +65,17 @@ public class ChannelManagementProfileImpl implements ChannelManagementProfile {
 		return builder;
 	}
 		
-	public ChannelHandler createChannelHandler(SessionManager manager) {
+	public ChannelHandler createChannelHandler(SessionManager manager, InternalChannel channel) {
 		this.manager = manager;
+		this.channel = channel;
 		return new ManagementChannelHandler(this, parser);
 	}
 	
-	public final void sendGreeting(String[] profiles, Reply reply) {
-		reply.sendRPY(createGreeting(profiles));
+	public final Message createSessionStartDeclined(int errorCode, String message) {
+		return createError(errorCode, message);
 	}
 	
-	public final void sendSessionStartDeclined(int errorCode, String message, Reply reply) {
-		reply.sendERR(createError(errorCode, message));
-	}
-	
-	protected Message createGreeting(String[] profiles) {
+	public final Message createGreeting(String[] profiles) {
 		return builder.createGreeting(createMessageBuilder(), profiles);
 	}
 	
@@ -100,9 +95,8 @@ public class ChannelManagementProfileImpl implements ChannelManagementProfile {
 			final int channelNumber, 
 			final ProfileInfo[] infos, 
 			final StartChannelCallback callback) {
-		int messageNumber = messageNumberSequence.next(); 
 		Message message = builder.createStart(createMessageBuilder(), channelNumber, infos);
-		manager.sendChannelManagementMessage(messageNumber, message, new ManagementReplyHandler() {
+		channel.sendMessage(message, new ManagementReplyHandler() {
 			
 			public void receivedRPY(Message message) {
 				ProfileInfo profile = parser.parseProfile(message);
@@ -118,9 +112,8 @@ public class ChannelManagementProfileImpl implements ChannelManagementProfile {
 	}
 	
 	public final void closeChannel(final int channelNumber, final CloseCallback callback) {
-		int messageNumber = messageNumberSequence.next();
 		Message message = builder.createClose(createMessageBuilder(), channelNumber, 200);
-		manager.sendChannelManagementMessage(messageNumber, message, new ManagementReplyHandler() {
+		channel.sendMessage(message, new ManagementReplyHandler() {
 		
 			public void receivedRPY(Message message) {
 				parser.parseOk(message);
@@ -173,13 +166,15 @@ public class ChannelManagementProfileImpl implements ChannelManagementProfile {
 	}
 
 	public final void closeChannelRequested(final int channelNumber, final Reply reply) {
-		DefaultCloseChannelRequest request = new DefaultCloseChannelRequest();
-		manager.channelCloseRequested(channelNumber, request);
-		if (request.isAccepted()) {
-			reply.sendRPY(builder.createOk(createMessageBuilder()));
-		} else {
-			reply.sendERR(builder.createError(createMessageBuilder(), 550, "still working"));
-		}
+		manager.channelCloseRequested(channelNumber, new CloseCallback() {
+			public void closeDeclined(int code, String message) {
+				reply.sendERR(builder.createError(createMessageBuilder(), code, message));
+			}
+		
+			public void closeAccepted() {
+				reply.sendRPY(builder.createOk(createMessageBuilder()));
+			}		
+		});
 	}
 
 	public final void closeSessionRequested(final Reply reply) {

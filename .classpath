@@ -4,10 +4,13 @@
   <classpathentry kind="src" path="src/test/resources" output="target/test-classes" excluding="**/*.java"/>
   <classpathentry kind="output" path="target/classes"/>
   <classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-  <classpathentry kind="var" path="M2_REPO/junit/junit/3.8.1/junit-3.8.1.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/apache/mina/mina-core/1.1.5/mina-core-1.1.5.jar"/>
-  <classpathentry kind="var" path="M2_REPO/org/slf4j/slf4j-api/1.4.3/slf4j-api-1.4.3.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/hamcrest/hamcrest-core/1.1/hamcrest-core-1.1.jar"/>
   <classpathentry kind="var" path="M2_REPO/org/slf4j/slf4j-simple/1.0/slf4j-simple-1.0.jar"/>
-  <classpathentry kind="var" path="M2_REPO/easymock/easymock/1.1/easymock-1.1.jar"/>
-  <classpathentry kind="var" path="M2_REPO/jmock/jmock/1.1.0/jmock-1.1.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/jmock/jmock/2.4.0/jmock-2.4.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/jmock/jmock-junit3/2.4.0/jmock-junit3-2.4.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/slf4j/slf4j-api/1.4.3/slf4j-api-1.4.3.jar" sourcepath="M2_REPO/org/slf4j/slf4j-api/1.4.3/slf4j-api-1.4.3-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/apache/mina/mina-core/1.1.5/mina-core-1.1.5.jar" sourcepath="M2_REPO/org/apache/mina/mina-core/1.1.5/mina-core-1.1.5-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/hamcrest/hamcrest-library/1.1/hamcrest-library-1.1.jar"/>
+  <classpathentry kind="var" path="M2_REPO/junit/junit/3.8.1/junit-3.8.1.jar" sourcepath="M2_REPO/junit/junit/3.8.1/junit-3.8.1-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/easymock/easymock/1.1/easymock-1.1.jar" sourcepath="M2_REPO/easymock/easymock/1.1/easymock-1.1-sources.jar"/>
 </classpath>

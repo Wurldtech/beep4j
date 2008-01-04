@@ -19,6 +19,7 @@ import net.sf.beep4j.ChannelHandler;
 import net.sf.beep4j.Message;
 import net.sf.beep4j.ProfileInfo;
 import net.sf.beep4j.Reply;
+import net.sf.beep4j.internal.InternalChannel;
 import net.sf.beep4j.internal.SessionManager;
 
 /**
@@ -28,7 +29,7 @@ import net.sf.beep4j.internal.SessionManager;
  * 
  * @author Simon Raess
  */
-public interface ChannelManagementProfile {
+public interface ManagementProfile {
 	
 	/**
 	 * Invoked by the framework to initialize the channel and to get
@@ -38,24 +39,22 @@ public interface ChannelManagementProfile {
 	 * @param manager the SessionManager to be used by the profile
 	 * @return the ChannelHandler for the profile
 	 */
-	ChannelHandler createChannelHandler(SessionManager manager);
+	ChannelHandler createChannelHandler(SessionManager manager, InternalChannel channel);
 	
 	/**
 	 * Sends a message that starting the session is declined.
 	 * 
 	 * @param errorCode the error code given by the local application
 	 * @param message the error message given by the local application
-	 * @param reply the reply needed to send the initial ERR message
 	 */
-	void sendSessionStartDeclined(int errorCode, String message, Reply reply);
+	Message createSessionStartDeclined(int errorCode, String message);
 	
 	/**
 	 * Sends a greeting message to the remote peer.
 	 * 
 	 * @param profiles the set of supported profiles by this peer
-	 * @param reply the reply needed to send the initial RPY message
 	 */
-	void sendGreeting(String[] profiles, Reply reply);
+	Message createGreeting(String[] profile);
 
 	/**
 	 * Invoked by the session when a greeting has been received during

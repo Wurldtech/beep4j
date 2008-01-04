@@ -15,6 +15,22 @@
  */
 package net.sf.beep4j.internal.management;
 
-interface ChannelManagementRequest {
-		
+import net.sf.beep4j.Message;
+import net.sf.beep4j.MessageBuilder;
+import net.sf.beep4j.ProfileInfo;
+
+public interface ManagementMessageBuilder {
+	
+	Message createGreeting(MessageBuilder builder, String[] profiles);
+
+	Message createProfile(MessageBuilder builder, ProfileInfo profile);
+
+	Message createOk(MessageBuilder builder);
+
+	Message createError(MessageBuilder builder, int code, String message);
+
+	Message createStart(MessageBuilder builder, int channelNumber, ProfileInfo[] infos);
+
+	Message createClose(MessageBuilder builder, int channelNumber, int code);
+	
 }

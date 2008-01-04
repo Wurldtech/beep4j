@@ -19,7 +19,7 @@ import java.util.Arrays;
 
 import net.sf.beep4j.ProfileInfo;
 
-final class StartChannelMessage implements ChannelManagementRequest {
+final class StartChannelMessage implements ManagementRequest {
 	
 	private final int channelNumber;
 	

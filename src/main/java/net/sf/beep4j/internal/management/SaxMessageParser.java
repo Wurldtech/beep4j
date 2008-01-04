@@ -53,9 +53,9 @@ import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
-public class SaxMessageParser implements ChannelManagementMessageParser {
+public class SaxMessageParser implements ManagementMessageParser {
 	
-	public ChannelManagementRequest parseRequest(Message message) {
+	public ManagementRequest parseRequest(Message message) {
 		try {
 			ElementHandlerContentHandler handler = new ElementHandlerContentHandler();
 			handler.registerHandler("/start", new StartElementHandler(handler));
@@ -64,7 +64,7 @@ public class SaxMessageParser implements ChannelManagementMessageParser {
 			
 			SAXParser parser = SAXParserFactory.newInstance().newSAXParser();
 			parser.parse(new InputSource(message.getReader()), handler);
-			return (ChannelManagementRequest) handler.peekObject();
+			return (ManagementRequest) handler.peekObject();
 
 		} catch (Exception e) {
 			throw new InternalException(e);

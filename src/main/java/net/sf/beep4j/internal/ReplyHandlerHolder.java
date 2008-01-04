@@ -18,7 +18,6 @@ package net.sf.beep4j.internal;
 import java.util.concurrent.locks.ReentrantLock;
 
 import net.sf.beep4j.Message;
-import net.sf.beep4j.ProtocolException;
 import net.sf.beep4j.ReplyHandler;
 import net.sf.beep4j.internal.util.Assert;
 
@@ -54,8 +53,7 @@ class ReplyHandlerHolder {
 		}
 	}
 	
-	protected void receivedANS(int channelNumber, int messageNumber, Message message) {
-		validateMessageNumber(channelNumber, messageNumber);
+	protected void receivedANS(Message message) {
 		unlock();
 		try {
 			replyHandler.receivedANS(message);
@@ -64,8 +62,7 @@ class ReplyHandlerHolder {
 		}
 	}
 	
-	protected void receivedNUL(int channelNumber, int messageNumber) {
-		validateMessageNumber(channelNumber, messageNumber);
+	void receivedNUL() {
 		unlock();
 		try {
 			replyHandler.receivedNUL();
@@ -74,8 +71,7 @@ class ReplyHandlerHolder {
 		}
 	}
 	
-	protected void receivedERR(int channelNumber, int messageNumber, Message message) {
-		validateMessageNumber(channelNumber, messageNumber);
+	void receivedERR(Message message) {
 		unlock();
 		try {
 			replyHandler.receivedERR(message);
@@ -84,22 +80,12 @@ class ReplyHandlerHolder {
 		}
 	}
 	
-	protected void receivedRPY(int channelNumber, int messageNumber, Message message) {
-		validateMessageNumber(channelNumber, messageNumber);
+	void receivedRPY(Message message) {
 		unlock();
 		try {
 			replyHandler.receivedRPY(message);
 		} finally {
 			lock();
-		}
-	}
-	
-	private void validateMessageNumber(int channelNumber, int messageNumber) {
-		if (this.messageNumber != messageNumber) {
-			throw new ProtocolException("next expected reply on channel "
-					+ channelNumber + " must have message number "
-					+ this.messageNumber + " but was "
-					+ messageNumber);
 		}
 	}
 	

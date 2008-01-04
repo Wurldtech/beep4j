@@ -20,30 +20,23 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
-import net.sf.beep4j.Channel;
 import net.sf.beep4j.ChannelHandler;
 import net.sf.beep4j.ChannelHandlerFactory;
-import net.sf.beep4j.CloseChannelCallback;
-import net.sf.beep4j.CloseChannelRequest;
 import net.sf.beep4j.Message;
-import net.sf.beep4j.MessageBuilder;
 import net.sf.beep4j.ProfileInfo;
 import net.sf.beep4j.ProtocolException;
-import net.sf.beep4j.Reply;
 import net.sf.beep4j.ReplyHandler;
 import net.sf.beep4j.SessionHandler;
 import net.sf.beep4j.internal.management.BEEPError;
-import net.sf.beep4j.internal.management.ChannelManagementProfile;
-import net.sf.beep4j.internal.management.ChannelManagementProfileImpl;
 import net.sf.beep4j.internal.management.CloseCallback;
 import net.sf.beep4j.internal.management.Greeting;
+import net.sf.beep4j.internal.management.ManagementProfile;
+import net.sf.beep4j.internal.management.ManagementProfileImpl;
 import net.sf.beep4j.internal.management.StartChannelCallback;
-import net.sf.beep4j.internal.message.DefaultMessageBuilder;
 import net.sf.beep4j.internal.stream.BeepStream;
 import net.sf.beep4j.internal.stream.MessageHandler;
 import net.sf.beep4j.internal.util.Assert;
@@ -72,15 +65,9 @@ public class SessionImpl
 	
 	private final boolean initiator;
 	
-	private final Map<Integer,LinkedList<ReplyHandlerHolder>> replyHandlerHolders = new HashMap<Integer,LinkedList<ReplyHandlerHolder>>();
+	private final Map<Integer,InternalChannel> channels = new HashMap<Integer,InternalChannel>();
 	
-	private final Map<String,Reply> replies = new HashMap<String,Reply>();
-	
-	private final Map<Integer,Channel> channels = new HashMap<Integer,Channel>();
-	
-	private final Map<Integer,ChannelHandler> channelHandlers = new HashMap<Integer,ChannelHandler>(); 
-	
-	private final ChannelManagementProfile channelManagementProfile;
+	private final ManagementProfile channelManagementProfile;
 	
 	private final BeepStream beepStream;
 	
@@ -122,23 +109,38 @@ public class SessionImpl
 		
 		this.channelNumberSequence = new IntegerSequence(initiator ? 1 : 2, 2);
 		
-		initialState = new InitialState();
-		aliveState = new AliveState();
-		closeInitiatedState = new CloseInitiatedState();
-		deadState = new DeadState();
+		initialState = createInitialState();
+		aliveState = createAliveState();
+		closeInitiatedState = createCloseInitiatedState();
+		deadState = createDeadState();
 		currentState = initialState;
 	}
+
+	protected DeadState createDeadState() {
+		return new DeadState();
+	}
+
+	protected SessionState createCloseInitiatedState() {
+		return new CloseInitiatedState();
+	}
+
+	protected SessionState createAliveState() {
+		return new AliveState();
+	}
+
+	protected SessionState createInitialState() {
+		return new InitialState();
+	}
 	
-	protected ChannelManagementProfile createChannelManagementProfile(boolean initiator) {
-		return new ChannelManagementProfileImpl(initiator);
+	protected ManagementProfile createChannelManagementProfile(boolean initiator) {
+		return new ManagementProfileImpl(initiator);
 	}
 
 	protected void initChannelManagementProfile() {
-		ChannelHandler channelHandler = channelManagementProfile.createChannelHandler(this);
-		
-		// we are never using the Channel object for the management profile
-		// so we'll just pass null as this won't be a problem
-		registerChannel(0, null, channelHandler);
+		InternalChannel channel = new ChannelImpl(this, null, 0);
+		ChannelHandler channelHandler = channelManagementProfile.createChannelHandler(this, channel);
+		registerChannel(0, channel);
+		channel.channelOpened(channelHandler);
 	}
 		
 	protected InternalChannel createChannel(InternalSession session, String profileUri, int channelNumber) {
@@ -146,7 +148,7 @@ public class SessionImpl
 	}
 	
 	private ChannelHandler initChannel(InternalChannel channel, ChannelHandler handler) {
-		return new ChannelHandlerWrapper(channel.initChannel(handler), sessionLock);
+		return new ChannelHandlerWrapper(handler, sessionLock);
 	}
 	
 	protected void lock() {
@@ -223,92 +225,22 @@ public class SessionImpl
 		return channels.size() > 1;
 	}
 
-	protected void registerChannel(int channelNumber, Channel channel, ChannelHandler handler) {
+	protected void registerChannel(int channelNumber, InternalChannel channel) {
 		channels.put(channelNumber, channel);
-		channelHandlers.put(channelNumber, handler);
-		replyHandlerHolders.put(channelNumber, new LinkedList<ReplyHandlerHolder>());
 		fireChannelStarted(channelNumber);
 	}
+	
+	protected InternalChannel getChannel(int channelNumber) {
+		InternalChannel channel = channels.get(channelNumber);
+		if (channel == null) {
+			throw new ProtocolException("channel " + channelNumber + " is not known by session");
+		}
+		return channel;
+	}
 
-	protected void unregisterChannel(int channelNumber) {
+	protected void removeChannel(int channelNumber) {
 		channels.remove(channelNumber);
-		channelHandlers.remove(channelNumber);
-		replyHandlerHolders.remove(channelNumber);
 		fireChannelClosed(channelNumber);
-	}
-	
-	// --> start of reply handler related methods (incoming) <--
-	
-	protected ReplyHandlerHolder getReplyHandler(int channelNumber, int messageNumber) {
-		LinkedList<ReplyHandlerHolder> listeners = replyHandlerHolders.get(channelNumber);
-		if (listeners.isEmpty()) {
-			throw new ProtocolException("received a reply but expects no outstanding replies");
-		}
-		return listeners.getFirst();
-	}
-
-	protected void registerReplyHandler(int channelNumber, int messageNumber, ReplyHandler handler) {
-		LinkedList<ReplyHandlerHolder> expectedReplies = replyHandlerHolders.get(channelNumber);
-		if (channelNumber == 0) {
-			// channel 0 is managed by the channel management profile
-			// that profile must be executed while holding the session lock
-			// thus no unlocking / locking should be done while calling the ReplyHandler
-			expectedReplies.addLast(new ReplyHandlerHolder(messageNumber, handler));
-		} else {
-			// ensures that when the application is called, no locks are held
-			expectedReplies.addLast(new ReplyHandlerHolder(messageNumber, handler, sessionLock));			
-		}
-	}
-	
-	protected ReplyHandlerHolder unregisterReplyHandler(final int channelNumber, final int messageNumber) {
-		LinkedList<ReplyHandlerHolder> holders = replyHandlerHolders.get(channelNumber);
-		ReplyHandlerHolder holder = holders.removeFirst();
-		if (messageNumber != holder.getMessageNumber()) {
-			throw new ProtocolException("next expected reply has message number " 
-					+ holder.getMessageNumber()
-					+ "; received reply had message number " + messageNumber);
-		}
-		return holder;
-	}
-
-	// --> end of reply handler related methods (incoming) <--
-	
-	// --> start of methods related to replies (outgoing) <--
-	
-	protected Reply createReply(BeepStream mapping, int channelNumber, int messageNumber) {
-		Reply reply = new DefaultReply(mapping, channelNumber, messageNumber);
-		if (channelNumber > 0) {
-			reply = new LockingReply(reply, sessionLock);
-		}
-		registerReply(channelNumber, messageNumber, reply);
-		return reply;
-	}
-	
-	protected boolean hasReply(int channelNumber, int messageNumber) {
-		return replies.containsKey(key(channelNumber, messageNumber));
-	}
-	
-	protected void registerReply(int channelNumber, int messageNumber, Reply reply) {
-		replies.put(key(channelNumber, messageNumber), reply);
-	}
-	
-	protected void replyCompleted(int channelNumber, int messageNumber) {
-		Reply reply = replies.remove(key(channelNumber, messageNumber));
-		if (reply == null) {
-			throw new IllegalStateException(
-					"completed reply that does no longer exist (channel="
-					+ channelNumber + ",message=" + messageNumber + ")");
-		}
-	}
-	
-	// --> end of methods related to replies (outgoing) <--
-	
-	private ChannelHandler getChannelHandler(int channelNumber) {
-		return channelHandlers.get(channelNumber);
-	}
-	
-	private String key(int channelNumber, int messageNumber) {
-		return channelNumber + ":" + messageNumber;
 	}
 	
 	protected void checkInitialAliveTransition() {
@@ -378,10 +310,46 @@ public class SessionImpl
 	 * This method is called by the channel implementation to send a message on
 	 * a particular channel to the other peer.
 	 */	
-	public void sendMessage(int channelNumber, int messageNumber, Message message, ReplyHandler reply) {
+	public void sendMSG(int channelNumber, int messageNumber, Message message, ReplyHandler replyHandler) {
 		lock();
 		try {
-			getCurrentState().sendMessage(channelNumber, messageNumber, message, reply);
+			getCurrentState().sendMessage(channelNumber, messageNumber, message, replyHandler);
+		} finally {
+			unlock();
+		}
+	}
+	
+	public void sendANS(int channelNumber, int messageNumber, int answerNumber, Message message) {
+		lock();
+		try {
+			getCurrentState().sendANS(channelNumber, messageNumber, answerNumber, message);
+		} finally {
+			unlock();
+		}
+	}
+	
+	public void sendERR(int channelNumber, int messageNumber, Message message) {
+		lock();
+		try {
+			getCurrentState().sendERR(channelNumber, messageNumber, message);
+		} finally {
+			unlock();
+		}
+	}
+	
+	public void sendNUL(int channelNumber, int messageNumber) {
+		lock();
+		try {
+			getCurrentState().sendNUL(channelNumber, messageNumber);
+		} finally {
+			unlock();
+		}
+	}
+	
+	public void sendRPY(int channelNumber, int messageNumber, Message message) {
+		lock();
+		try {
+			getCurrentState().sendRPY(channelNumber, messageNumber, message);
 		} finally {
 			unlock();
 		}
@@ -391,7 +359,7 @@ public class SessionImpl
 	 * This method is called by the channel implementation to send a close channel
 	 * request to the other peer.
 	 */
-	public void requestChannelClose(final int channelNumber, final CloseChannelCallback callback) {
+	public void requestChannelClose(final int channelNumber, final CloseCallback callback) {
 		Assert.notNull("callback", callback);
 		lock();
 		try {
@@ -400,8 +368,8 @@ public class SessionImpl
 					callback.closeDeclined(code, message);
 				}
 				public void closeAccepted() {
-					unregisterChannel(channelNumber);
 					callback.closeAccepted();
+					removeChannel(channelNumber);
 				}
 			});
 		} finally {
@@ -433,9 +401,9 @@ public class SessionImpl
 	 * that is the application, which decides what to do with the request to
 	 * close the channel.
 	 */
-	public void channelCloseRequested(final int channelNumber, final CloseChannelRequest request) {
+	public void channelCloseRequested(final int channelNumber, final CloseCallback callback) {
 		Assert.holdsLock("session", sessionLock);
-		getCurrentState().channelCloseRequested(channelNumber, request);
+		getCurrentState().channelCloseRequested(channelNumber, callback);
 	}
 	
 	/*
@@ -445,14 +413,6 @@ public class SessionImpl
 	public void sessionCloseRequested(CloseCallback callback) {
 		Assert.holdsLock("session", sessionLock);
 		getCurrentState().sessionCloseRequested(callback);
-	}
-	
-	/*
-	 * Sends a message on channel 0. Used by the ChannelManagementProfile.
-	 */
-	public void sendChannelManagementMessage(int messageNumber, Message message, ReplyHandler reply) {
-		Assert.holdsLock("session", sessionLock);
-		getCurrentState().sendMessage(0, messageNumber, message, reply);
 	}
 	
 	// --> end of SessionManager methods <--
@@ -552,6 +512,14 @@ public class SessionImpl
 		
 		void connectionEstablished(SocketAddress address);
 		
+		void sendRPY(int channelNumber, int messageNumber, Message message);
+
+		void sendNUL(int channelNumber, int messageNumber);
+
+		void sendERR(int channelNumber, int messageNumber, Message message);
+
+		void sendANS(int channelNumber, int messageNumber, int answerNumber, Message message);
+
 		void exceptionCaught(Throwable cause);
 
 		void startChannel(ProfileInfo[] profiles, ChannelHandlerFactory factory);
@@ -562,7 +530,7 @@ public class SessionImpl
 		
 		StartChannelResponse channelStartRequested(int channelNumber, ProfileInfo[] profiles);
 		
-		void channelCloseRequested(int channelNumber, CloseChannelRequest request);
+		void channelCloseRequested(int channelNumber, CloseCallback callback);
 		
 		void sessionCloseRequested(CloseCallback callback);
 		
@@ -607,12 +575,35 @@ public class SessionImpl
 					+ channelNumber);
 		}
 		
+		public void sendANS(int channelNumber, int messageNumber, int answerNumber, Message message) {
+			throw new IllegalStateException(
+					"cannot send ANS message in state <" + getName() + ">: channel="
+					+ channelNumber);
+		}
+		
+		public void sendERR(int channelNumber, int messageNumber, Message message) {
+			throw new IllegalStateException(
+					"cannot send ERR message in state <" + getName() + ">: channel="
+					+ channelNumber);
+		}
+		
+		public void sendNUL(int channelNumber, int messageNumber) {
+			throw new IllegalStateException(
+					"cannot send NUL message in state <" + getName() + ">: channel="
+					+ channelNumber);			
+		}
+		
+		public void sendRPY(int channelNumber, int messageNumber, Message message) {
+			throw new IllegalStateException(
+					"cannot send RPY message in state <" + getName() + ">: channel="
+					+ channelNumber);
+		}
+		
 		public StartChannelResponse channelStartRequested(int channelNumber, ProfileInfo[] profiles) {
 			return StartChannelResponse.createCancelledResponse(550, "cannot start channel");
 		}
 
-		public void receiveANS(int channelNumber, int messageNumber,
-				int answerNumber, Message message) {
+		public void receiveANS(int channelNumber, int messageNumber, int answerNumber, Message message) {
 			throw new IllegalStateException(
 					"internal error: unexpected method invocation in state <" + getName() + ">: "
 					+ "message ANS, channel=" + channelNumber 
@@ -648,7 +639,7 @@ public class SessionImpl
 			throw new IllegalStateException("cannot close session");
 		}
 		
-		public void channelCloseRequested(int channelNumber, CloseChannelRequest request) {
+		public void channelCloseRequested(int channelNumber, CloseCallback callback) {
 			throw new IllegalStateException("cannot close channel");
 		}
 		
@@ -673,19 +664,16 @@ public class SessionImpl
 			return "initial";
 		}
 		
-		public void connectionEstablished(SocketAddress address) {
-			Reply reply = new InitialReply(beepStream);
-			registerReply(0, 0, reply);
-			
+		public void connectionEstablished(SocketAddress address) {			
 			DefaultStartSessionRequest request = new DefaultStartSessionRequest(!initiator);
 			sessionHandler.connectionEstablished(request);
 			
 			if (request.isCancelled()) {
-				channelManagementProfile.sendSessionStartDeclined(request.getReplyCode(), request.getMessage(), reply);
+				beepStream.sendERR(0, 0, channelManagementProfile.createSessionStartDeclined(request.getReplyCode(), request.getMessage()));
 				setCurrentState(deadState);
 				beepStream.closeTransport();
 			} else {
-				channelManagementProfile.sendGreeting(request.getProfiles(), reply);
+				beepStream.sendRPY(0, 0, channelManagementProfile.createGreeting(request.getProfiles()));
 			}
 		}
 		
@@ -757,8 +745,8 @@ public class SessionImpl
 						InternalChannel channel = createChannel(
 								SessionImpl.this, info.getUri(), channelNumber);
 						ChannelHandler channelHandler = initChannel(channel, handler);
-						registerChannel(channelNumber, channel, channelHandler);
-						channelHandler.channelOpened(channel);
+						registerChannel(channelNumber, channel);
+						channel.channelOpened(channelHandler);
 					} finally {
 						unlock();
 					}
@@ -777,8 +765,31 @@ public class SessionImpl
 		@Override
 		public void sendMessage(int channelNumber, int messageNumber, Message message, ReplyHandler listener) {
 			debug("send message: channel=", channelNumber, ",message=", messageNumber);
-			registerReplyHandler(channelNumber, messageNumber, listener);
 			beepStream.sendMSG(channelNumber, messageNumber, message);
+		}
+		
+		@Override
+		public void sendANS(int channelNumber, int messageNumber, int answerNumber, Message message) {
+			debug("send ANS: channel=", channelNumber, ",message=", messageNumber, ",answer=", answerNumber);
+			beepStream.sendANS(channelNumber, messageNumber, answerNumber, message);
+		}
+		
+		@Override
+		public void sendERR(int channelNumber, int messageNumber, Message message) {
+			debug("send ERR: channel=", channelNumber, ",message=", messageNumber);
+			beepStream.sendERR(channelNumber, messageNumber, message);
+		}
+		
+		@Override
+		public void sendNUL(int channelNumber, int messageNumber) {
+			debug("send NUL: channel=", channelNumber, ",message=", messageNumber);
+			beepStream.sendNUL(channelNumber, messageNumber);
+		}
+		
+		@Override
+		public void sendRPY(int channelNumber, int messageNumber, Message message) {
+			debug("send RPY: channel=", channelNumber, ",message=", messageNumber);
+			beepStream.sendRPY(channelNumber, messageNumber, message);
 		}
 		
 		@Override
@@ -804,64 +815,40 @@ public class SessionImpl
 			
 			InternalChannel channel = createChannel(SessionImpl.this, info.getUri(), channelNumber);
 			ChannelHandler handler = initChannel(channel, response.getChannelHandler());
-			handler.channelOpened(channel);
-			registerChannel(channelNumber, channel, handler);
+			registerChannel(channelNumber, channel);
+			channel.channelOpened(handler);
 			
 			return response;
 		}
 		
 		@Override
-		public void receiveMSG(int channelNumber, int messageNumber, Message message) {
-			if (hasReply(channelNumber, messageNumber)) {
-				// Validation of frames according to the BEEP specification section 2.2.1.1.
-				//
-				// A frame is poorly formed if the header starts with "MSG", and 
-				// the message number refers to a "MSG" message that has been 
-				// completely received but for which a reply has not been completely sent.
-				throw new ProtocolException("Message number " + messageNumber
-						+ " on channel " + channelNumber + " refers to a MSG message "
-						+ "that has been received but for which a reply has not been "
-						+ "completely sent.");
-			}
-			
-			Reply reply = createReply(beepStream, channelNumber, messageNumber);
-			getChannelHandler(channelNumber).messageReceived(message, reply);
+		public void receiveMSG(int channelNumber, int messageNumber, Message message) {			
+			InternalChannel channel = getChannel(channelNumber);
+			channel.receiveMSG(messageNumber, message);
 		}
 
 		@Override
 		public void receiveANS(int channelNumber, int messageNumber, int answerNumber, Message message) {
-			ReplyHandlerHolder holder = getReplyHandler(channelNumber, messageNumber);
-			holder.receivedANS(channelNumber, messageNumber, message);
+			InternalChannel channel = getChannel(channelNumber);
+			channel.receiveANS(messageNumber, answerNumber, message);
 		}
 		
 		@Override
 		public void receiveNUL(int channelNumber, int messageNumber) {
-			ReplyHandlerHolder holder = getReplyHandler(channelNumber, messageNumber);
-			try {
-				holder.receivedNUL(channelNumber, messageNumber);
-			} finally {
-				unregisterReplyHandler(channelNumber, messageNumber);
-			}
+			InternalChannel channel = getChannel(channelNumber);
+			channel.receiveNUL(messageNumber);
 		}
 
 		@Override
 		public void receiveERR(int channelNumber, int messageNumber, Message message) {
-			ReplyHandlerHolder holder = getReplyHandler(channelNumber, messageNumber);
-			try {
-				holder.receivedERR(channelNumber, messageNumber, message);
-			} finally {
-				unregisterReplyHandler(channelNumber, messageNumber);
-			}
+			InternalChannel channel = getChannel(channelNumber);
+			channel.receiveERR(messageNumber, message);
 		}
 
 		@Override
 		public void receiveRPY(int channelNumber, int messageNumber, Message message) {
-			ReplyHandlerHolder holder = getReplyHandler(channelNumber, messageNumber);
-			try {
-				holder.receivedRPY(channelNumber, messageNumber, message);
-			} finally {
-				unregisterReplyHandler(channelNumber, messageNumber);
-			}
+			InternalChannel channel = getChannel(channelNumber);
+			channel.receiveRPY(messageNumber, message);
 		}
 		
 		@Override
@@ -891,16 +878,18 @@ public class SessionImpl
 		}
 		
 		@Override
-		public void channelCloseRequested(int channelNumber, CloseChannelRequest request) {
-			DefaultCloseChannelRequest closeRequest = new DefaultCloseChannelRequest();
-			ChannelHandler handler = getChannelHandler(channelNumber);
-			handler.channelCloseRequested(closeRequest);
-			if (closeRequest.isAccepted()) {
-				request.accept();
-				unregisterChannel(channelNumber);
-			} else {
-				request.reject();
-			}
+		public void channelCloseRequested(final int channelNumber, final CloseCallback callback) {
+			InternalChannel channel = getChannel(channelNumber);
+			channel.channelCloseRequested(new CloseCallback() {
+				public void closeDeclined(final int code, final String message) {
+					callback.closeDeclined(code, message);			
+				}
+			
+				public void closeAccepted() {
+					callback.closeAccepted();
+					removeChannel(channelNumber);
+				}
+			});
 		}
 		
 		@Override
@@ -972,86 +961,6 @@ public class SessionImpl
 			return "<dead>";
 		}
 				
-	}
-	
-	protected class DefaultReply implements Reply {
-		
-		private final BeepStream mapping;
-		
-		private final int channel;
-		
-		private final int messageNumber;
-		
-		private int answerNumber = 0;
-		
-		private boolean complete;
-		
-		public DefaultReply(BeepStream mapping, int channel, int messageNumber) {
-			Assert.notNull("mapping", mapping);
-			this.mapping = mapping;
-			this.channel = channel;
-			this.messageNumber = messageNumber;
-		}
-		
-		private void checkCompletion() {
-			if (complete) {
-				throw new IllegalStateException("a complete reply has already been sent");
-			}
-		}
-
-		private void complete() {
-			complete = true;
-			replyCompleted(channel, messageNumber);
-		}
-		
-		public MessageBuilder createMessageBuilder() {
-			return new DefaultMessageBuilder();
-		}
-
-		public void sendANS(Message message) {
-			Assert.notNull("message", message);
-			checkCompletion();
-			mapping.sendANS(channel, messageNumber, answerNumber++, message);
-		}
-		
-		public void sendERR(Message message) {
-			Assert.notNull("message", message);
-			checkCompletion();
-			mapping.sendERR(channel, messageNumber, message);
-			complete();
-		}
-		
-		public void sendNUL() {
-			checkCompletion();
-			mapping.sendNUL(channel, messageNumber);
-			complete();
-		}
-		
-		public void sendRPY(Message message) {
-			Assert.notNull("message", message);
-			checkCompletion();
-			mapping.sendRPY(channel, messageNumber, message);
-			complete();
-		}
-		
-	}
-	
-	protected class InitialReply extends DefaultReply {
-		
-		public InitialReply(BeepStream mapping) {
-			super(mapping, 0, 0);
-		}
-		
-		@Override
-		public void sendANS(Message message) {
-			throw new InternalException("ANS is not a valid initial response");
-		}
-		
-		@Override
-		public void sendNUL() {
-			throw new InternalException("NUL is not a valid initial response");
-		}
-		
 	}
 	
 }

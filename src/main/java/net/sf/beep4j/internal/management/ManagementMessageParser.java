@@ -16,21 +16,18 @@
 package net.sf.beep4j.internal.management;
 
 import net.sf.beep4j.Message;
-import net.sf.beep4j.MessageBuilder;
 import net.sf.beep4j.ProfileInfo;
 
-public interface ChannelManagementMessageBuilder {
+public interface ManagementMessageParser {
 	
-	Message createGreeting(MessageBuilder builder, String[] profiles);
-
-	Message createProfile(MessageBuilder builder, ProfileInfo profile);
-
-	Message createOk(MessageBuilder builder);
-
-	Message createError(MessageBuilder builder, int code, String message);
-
-	Message createStart(MessageBuilder builder, int channelNumber, ProfileInfo[] infos);
-
-	Message createClose(MessageBuilder builder, int channelNumber, int code);
+	ManagementRequest parseRequest(Message message);
+	
+	Greeting parseGreeting(Message message);
+	
+	ProfileInfo parseProfile(Message message);
+	
+	void parseOk(Message message);
+	
+	BEEPError parseError(Message message);
 	
 }

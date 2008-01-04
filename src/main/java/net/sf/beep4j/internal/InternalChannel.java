@@ -17,6 +17,8 @@ package net.sf.beep4j.internal;
 
 import net.sf.beep4j.Channel;
 import net.sf.beep4j.ChannelHandler;
+import net.sf.beep4j.Message;
+import net.sf.beep4j.internal.management.CloseCallback;
 
 /**
  * Interface implemented by channels that contains methods only visible
@@ -25,16 +27,18 @@ import net.sf.beep4j.ChannelHandler;
  * @author Simon Raess
  */
 public interface InternalChannel extends Channel {
-
-	/**
-	 * Initializes the channel and passes the channel handler in.
-	 * The method can wrap the passed in channel handler to add
-	 * additional responsibilities (Decorator pattern).
-	 * 
-	 * @param channelHandler the ChannelHandler from the application
-	 * @return the ChannelHandler to be used for that channel
-	 */
-	ChannelHandler initChannel(ChannelHandler channelHandler);
+	
+	void channelOpened(ChannelHandler channelHandler);
+	
+	void receiveMSG(int messageNumber, Message message);
+	
+	void receiveRPY(int messageNumber, Message message);
+	
+	void receiveERR(int messageNumber, Message message);
+	
+	void receiveANS(int messageNumber, int answerNumber, Message message);
+	
+	void receiveNUL(int messageNumber);
 	
 	/**
 	 * Tests whether this channel is in the Alive state.
@@ -57,5 +61,7 @@ public interface InternalChannel extends Channel {
 	 * @return true iff the channel is in the Dead state
 	 */
 	boolean isDead();
+
+	void channelCloseRequested(CloseCallback callback);
 	
 }

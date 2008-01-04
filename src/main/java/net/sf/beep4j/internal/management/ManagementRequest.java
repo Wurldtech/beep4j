@@ -15,19 +15,6 @@
  */
 package net.sf.beep4j.internal.management;
 
-import net.sf.beep4j.Message;
-import net.sf.beep4j.ProfileInfo;
-
-public interface ChannelManagementMessageParser {
-	
-	ChannelManagementRequest parseRequest(Message message);
-	
-	Greeting parseGreeting(Message message);
-	
-	ProfileInfo parseProfile(Message message);
-	
-	void parseOk(Message message);
-	
-	BEEPError parseError(Message message);
-	
+interface ManagementRequest {
+		
 }

@@ -22,8 +22,8 @@ import net.sf.beep4j.Message;
 import net.sf.beep4j.MessageBuilder;
 import net.sf.beep4j.ProfileInfo;
 import net.sf.beep4j.internal.management.BEEPError;
-import net.sf.beep4j.internal.management.ChannelManagementMessageBuilder;
-import net.sf.beep4j.internal.management.ChannelManagementMessageParser;
+import net.sf.beep4j.internal.management.ManagementMessageBuilder;
+import net.sf.beep4j.internal.management.ManagementMessageParser;
 import net.sf.beep4j.internal.management.CloseChannelMessage;
 import net.sf.beep4j.internal.management.Greeting;
 import net.sf.beep4j.internal.management.SaxMessageBuilder;
@@ -39,9 +39,9 @@ public class ChannelManagementMessageTest extends TestCase {
 
 	private static final String PROFILE_3 = "http://examples.org/profile/crypto";
 
-	private ChannelManagementMessageBuilder builder;
+	private ManagementMessageBuilder builder;
 	
-	private ChannelManagementMessageParser parser;
+	private ManagementMessageParser parser;
 
 	private MessageBuilder messageBuilder;
 	

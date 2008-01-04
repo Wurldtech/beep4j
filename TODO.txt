@@ -126,8 +126,14 @@
   Session#startChannel
   ChannelHandler#channelOpened
   
-- closing channel
+- successfully closing channel Channel#close
+  
+  CloseChannelCallback#closeAccepted
+  ChannelHandler#channelClosed
+  channel state = <dead>
+  unregister channel from session
+  fire channel closed event
 
-  Channel#close
+  
   
   

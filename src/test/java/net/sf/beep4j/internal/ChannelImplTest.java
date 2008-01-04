@@ -15,6 +15,8 @@
  */
 package net.sf.beep4j.internal;
 
+import junit.framework.TestCase;
+import net.sf.beep4j.Channel;
 import net.sf.beep4j.ChannelHandler;
 import net.sf.beep4j.CloseChannelCallback;
 import net.sf.beep4j.CloseChannelRequest;
@@ -22,39 +24,51 @@ import net.sf.beep4j.Message;
 import net.sf.beep4j.MessageStub;
 import net.sf.beep4j.NullReplyHandler;
 import net.sf.beep4j.ReplyHandler;
+import net.sf.beep4j.internal.management.CloseCallback;
 
-import org.jmock.Mock;
-import org.jmock.MockObjectTestCase;
-import org.jmock.core.Invocation;
-import org.jmock.core.Stub;
+import org.hamcrest.Description;
+import org.jmock.Expectations;
+import org.jmock.Mockery;
+import org.jmock.Sequence;
+import org.jmock.api.Action;
+import org.jmock.api.Invocation;
 
-public class ChannelImplTest extends MockObjectTestCase {
+public class ChannelImplTest extends TestCase {
 	
 	private static final String PROFILE = "http://www.example.org/profiles/echo";
 	
 	private static final int CHANNEL = 1;
 	
-	private Mock sessionMock;
-	
 	private InternalSession session;
 
-	private Mock callbackMock;
-
-	private CloseChannelCallback callback;
-
-	private Mock channelHandlerMock;
-
 	private ChannelHandler channelHandler;
+
+	private Mockery context;
+
+	private Sequence sequence;
+
+	private InternalChannel channel;
 		
 	@Override
 	protected void setUp() throws Exception {
 		super.setUp();
-		sessionMock = mock(InternalSession.class);
-		session = (InternalSession) sessionMock.proxy();
-		callbackMock = mock(CloseChannelCallback.class);
-		callback = (CloseChannelCallback) callbackMock.proxy();
-		channelHandlerMock = mock(ChannelHandler.class);
-		channelHandler = (ChannelHandler) channelHandlerMock.proxy();
+		context = new Mockery();
+		session = context.mock(InternalSession.class);
+		channelHandler = context.mock(ChannelHandler.class);
+		
+		sequence = context.sequence("main-sequence");
+		
+		// opening the channel causes channelOpened to be called
+		context.checking(new Expectations() {{
+			one(channelHandler).channelOpened(with(any(Channel.class))); inSequence(sequence);
+		}});
+		
+		channel = new ChannelImpl(session, PROFILE, CHANNEL);
+		channel.channelOpened(channelHandler);
+	}
+	
+	private void assertIsSatisfied() {
+		context.assertIsSatisfied();
 	}
 	
 	private void assertIsAlive(InternalChannel channel) {
@@ -75,308 +89,325 @@ public class ChannelImplTest extends MockObjectTestCase {
 		assertTrue(channel.isDead());
 	}
 
-	public void testAcceptedCloseRequest() throws Exception {
-		InternalChannel channel = new ChannelImpl(session, PROFILE, CHANNEL);
-		channel.initChannel(channelHandler);
+	/*
+	 * - application requests channel close
+	 * - channel is in state that allows sending the request immediately
+	 * - remote peer accepts request
+	 * - channel is closed and moves to state dead
+	 */
+	public void testAcceptedCloseRequest() throws Exception {		
+		final CloseChannelCallback callback = context.mock(CloseChannelCallback.class);
 		
 		// define expectations
-		// TODO setup ordering constraints
-		sessionMock.expects(once()).method("requestChannelClose")
-				.with(eq(1), ANYTHING)
-				.will(new CloseAcceptingStub(1));
-		
-		callbackMock.expects(once()).method("closeAccepted");
-		
-		channelHandlerMock.expects(once()).method("channelClosed");
+		context.checking(new Expectations() {{
+			one(session).requestChannelClose(with(equal(1)), with(any(CloseCallback.class))); 
+			will(acceptCloseChannel(1)); inSequence(sequence);
+			
+			one(callback).closeAccepted(); inSequence(sequence);
+			one(channelHandler).channelClosed(); inSequence(sequence);
+		}});
 		
 		// test
 		channel.close(callback);
 		assertIsDead(channel);
-		try {
-			channel.sendMessage(new MessageStub(), new NullReplyHandler());
-			fail("sending messages in dead state must fail");
-		} catch (IllegalStateException e) {
-			// expected
-		}
-		try {
-			channel.close(callback);
-			fail("closing a dead channel must fail");
-		} catch (IllegalStateException e) {
-			// expected
-		}
 		
-		verify();
+		// verify
+		assertIsSatisfied();
 	}
 	
-	public void testDelayedAcceptedCloseRequest() throws Exception {
-		InternalChannel channel = new ChannelImpl(session, PROFILE, CHANNEL);
-		channel.initChannel(channelHandler);
+	/*
+	 * - application requests channel close
+	 * - channel is in state that does not allow sending the request immediately
+	 * - the outstanding message is replied to
+	 * - remote peer accepts request
+	 * - channel is closed and moves to state dead
+	 */
+	public void testDelayedAcceptedCloseRequest() throws Exception {		
+		final CloseChannelCallback callback = context.mock(CloseChannelCallback.class);
+		final Message message = new MessageStub();
 		
-		Message message = new MessageStub();
+		// used to capture the ReplyHandler
+		final ParameterCaptureAction<ReplyHandler> capture = 
+			new ParameterCaptureAction<ReplyHandler>(3, ReplyHandler.class, null);
 		
 		// define expectations
-		// TODO setup ordering constraints
-		ParameterCaptureStub<ReplyHandler> capture = 
-			new ParameterCaptureStub<ReplyHandler>(3, ReplyHandler.class, null);
-		
-		sessionMock.expects(once()).method("sendMessage")
-				.with(eq(1), eq(1), same(message), ANYTHING)
-				.will(capture);
-		
-		sessionMock.expects(once()).method("requestChannelClose")
-				.with(eq(1), ANYTHING)
-				.will(new CloseAcceptingStub(1));
-		
-		callbackMock.expects(once()).method("closeAccepted");
-		
-		channelHandlerMock.expects(once()).method("channelClosed");
+		context.checking(new Expectations() {{
+			one(session).sendMSG(with(equal(1)), with(equal(1)), with(same(message)), with(any(ReplyHandler.class)));
+			will(capture); inSequence(sequence);
+			
+			one(session).requestChannelClose(with(equal(1)), with(any(CloseCallback.class)));
+			will(acceptCloseChannel(1)); inSequence(sequence);
+			
+			one(callback).closeAccepted(); inSequence(sequence);
+			one(channelHandler).channelClosed(); inSequence(sequence);
+		}});
 		
 		// test
 		channel.sendMessage(message, new NullReplyHandler());
 		channel.close(callback);
 		assertIsShuttingDown(channel);
 		
-		ReplyHandler listener = capture.getParameter();
-		listener.receivedNUL();
+		// reply to the message so that the channel close request can be sent
+		capture.getParameter().receivedNUL();
 		assertIsDead(channel);
+		
+		// verify
+		assertIsSatisfied();
 	}
 	
-	public void testDeclinedCloseRequest() throws Exception {		
-		InternalChannel channel = new ChannelImpl(session, PROFILE, CHANNEL);
-		channel.initChannel(channelHandler);
-		
-		Message message = new MessageStub();
+	/*
+	 * - application tries to close a channel
+	 * - close request is denied by remote peer
+	 * - application then sends another message to show that channel still works
+	 */
+	public void testDeclinedCloseRequest() throws Exception {
+		final CloseChannelCallback callback = context.mock(CloseChannelCallback.class);
+		final Message message = new MessageStub();
 		
 		// define expectations
-		// TODO: define ordering constraints
-		sessionMock.expects(once()).method("requestChannelClose")
-				.with(eq(1), ANYTHING)
-				.will(new CloseDecliningStub(1, 550, "still working"));
-		
-		callbackMock.expects(once()).method("closeDeclined")
-				.with(eq(550), eq("still working"));
-		
-		sessionMock.expects(once()).method("sendMessage")
-				.with(eq(1), eq(1), same(message), ANYTHING);
+		context.checking(new Expectations() {{
+			one(session).requestChannelClose(with(equal(1)), with(any(CloseCallback.class)));
+			will(declineCloseChannel(1, 550, "still working")); inSequence(sequence);
+			
+			one(callback).closeDeclined(550, "still working"); inSequence(sequence);
+			
+			one(session).sendMSG(with(equal(1)), with(equal(1)), with(same(message)), with(any(ReplyHandler.class)));
+			inSequence(sequence);
+		}});
 		
 		// test
 		channel.close(callback);
 		assertIsAlive(channel);
 		channel.sendMessage(message, new NullReplyHandler());
+		
+		// verify
+		context.assertIsSatisfied();
 	}
 	
 	public void testDelayedDeclinedCloseRequest() throws Exception {
-		InternalChannel channel = new ChannelImpl(session, PROFILE, CHANNEL);
-		channel.initChannel(channelHandler);
+		final CloseChannelCallback callback = context.mock(CloseChannelCallback.class);
+		final Message m1 = new MessageStub();
+		final Message m2 = new MessageStub();
 		
-		Message m1 = new MessageStub();
-		Message m2 = new MessageStub();
+		final ParameterCaptureAction<ReplyHandler> capture = 
+			new ParameterCaptureAction<ReplyHandler>(3, ReplyHandler.class, null);
 		
 		// define expectations
-		// TODO: define ordering constraints
-		ParameterCaptureStub<ReplyHandler> capture = 
-			new ParameterCaptureStub<ReplyHandler>(3, ReplyHandler.class, null);
-		
-		sessionMock.expects(once()).method("sendMessage")
-				.with(eq(1), eq(1), same(m1), ANYTHING)
-				.will(capture);
-		
-		sessionMock.expects(once()).method("requestChannelClose")
-				.with(eq(1), ANYTHING)
-				.will(new CloseDecliningStub(1, 550, "still working"));
-		
-		callbackMock.expects(once()).method("closeDeclined")
-				.with(eq(550), eq("still working"));
-		
-		sessionMock.expects(once()).method("sendMessage")
-				.with(eq(1), eq(2), same(m2), ANYTHING);
+		context.checking(new Expectations() {{
+			one(session).sendMSG(with(equal(1)), with(equal(1)), with(same(m1)), with(any(ReplyHandler.class)));
+			will(capture); inSequence(sequence);
+			
+			one(session).requestChannelClose(with(equal(1)), with(any(CloseCallback.class)));
+			will(declineCloseChannel(1, 550, "still working")); inSequence(sequence);
+			
+			one(callback).closeDeclined(550, "still working"); inSequence(sequence);
+			
+			one(session).sendMSG(with(equal(1)), with(equal(2)), with(same(m2)), with(any(ReplyHandler.class)));
+			inSequence(sequence);
+		}});
 		
 		// test
 		channel.sendMessage(m1, new NullReplyHandler());
 		channel.close(callback);
 		assertIsShuttingDown(channel);
 		
-		ReplyHandler listener = capture.getParameter();
-		listener.receivedNUL();
+		// complete the reply by sending a NUL message
+		capture.getParameter().receivedNUL();
+		
+		// channel must be alive again
 		assertIsAlive(channel);
 		
+		// try that the channel works by sending an arbitrary message
 		channel.sendMessage(m2, new NullReplyHandler());
+		
+		// verify
+		assertIsSatisfied();
 	}
 	
-	public void testCloseRequestedAccepted() throws Exception {
-		InternalChannel channel = new ChannelImpl(session, PROFILE, CHANNEL);
-		ChannelHandler handler = channel.initChannel(channelHandler);
+	public void testCloseRequestedAccepted() throws Exception {	
+		final CloseCallback callback = context.mock(CloseCallback.class);
 		
 		// define expectations
-		channelHandlerMock.expects(once()).method("channelCloseRequested")
-				.with(ANYTHING)
-				.will(new CloseAcceptingRequest(0));
-		
-		channelHandlerMock.expects(once()).method("channelClosed");
-		
-		Mock mock = mock(CloseChannelRequest.class);
-		mock.expects(once()).method("accept");
-		CloseChannelRequest request = (CloseChannelRequest) mock.proxy();
+		context.checking(new Expectations() {{
+			one(channelHandler).channelCloseRequested(with(any(CloseChannelRequest.class)));
+			will(acceptCloseChannelRequest(0)); inSequence(sequence);
+			
+			one(channelHandler).channelClosed(); inSequence(sequence);
+			one(callback).closeAccepted(); inSequence(sequence);
+		}});
 		
 		// test
-		handler.channelCloseRequested(request);
+		channel.channelCloseRequested(callback);
 		assertIsDead(channel);
+		
+		// verify
+		assertIsSatisfied();
 	}
 	
 	public void testDelayedCloseRequestedAccepted() throws Exception {
-		InternalChannel channel = new ChannelImpl(session, PROFILE, CHANNEL);
-		ChannelHandler handler = channel.initChannel(channelHandler);
+		final Message message = new MessageStub();
 		
-		Message message = new MessageStub();
+		final ParameterCaptureAction<ReplyHandler> capture =
+			new ParameterCaptureAction<ReplyHandler>(3, ReplyHandler.class, null);
 		
-		ParameterCaptureStub<ReplyHandler> capture =
-			new ParameterCaptureStub<ReplyHandler>(3, ReplyHandler.class, null);
+		final CloseCallback callback = context.mock(CloseCallback.class);
 		
 		// define expectations
-		sessionMock.expects(once()).method("sendMessage")
-				.with(eq(1), eq(1), same(message), ANYTHING)
-				.will(capture);
-		
-		channelHandlerMock.expects(once()).method("channelCloseRequested")
-				.with(ANYTHING)
-				.will(new CloseAcceptingRequest(0));
-		
-		channelHandlerMock.expects(once()).method("channelClosed");
-		
-		Mock mock = mock(CloseChannelRequest.class);
-		mock.expects(once()).method("accept");
-		CloseChannelRequest request = (CloseChannelRequest) mock.proxy();
+		context.checking(new Expectations() {{
+			one(session).sendMSG(with(equal(1)), with(equal(1)), with(same(message)), with(any(ReplyHandler.class)));
+			will(capture); inSequence(sequence);
+			
+			one(channelHandler).channelCloseRequested(with(any(CloseChannelRequest.class)));
+			will(acceptCloseChannelRequest(0)); inSequence(sequence);
+			
+			one(channelHandler).channelClosed(); inSequence(sequence);
+			one(callback).closeAccepted(); inSequence(sequence);
+		}});
 
 		// test
 		channel.sendMessage(message, new NullReplyHandler());
-		handler.channelCloseRequested(request);
+		channel.channelCloseRequested(callback);
 		assertIsShuttingDown(channel);
 		
-		ReplyHandler listener = capture.getParameter();
-		listener.receivedNUL();
+		capture.getParameter().receivedNUL();
 		assertIsDead(channel);
+		
+		// verify
+		assertIsSatisfied();
 	}
 	
 	public void testCloseRequestedDeclined() throws Exception {
-		InternalChannel channel = new ChannelImpl(session, PROFILE, CHANNEL);
-		ChannelHandler handler = channel.initChannel(channelHandler);
+		final CloseCallback callback = context.mock(CloseCallback.class);
 		
 		// define expectations
-		channelHandlerMock.expects(once()).method("channelCloseRequested")
-				.with(ANYTHING)
-				.will(new CloseRejectingRequest(0));
-		
-		Mock mock = mock(CloseChannelRequest.class);
-		mock.expects(once()).method("reject");
-		CloseChannelRequest request = (CloseChannelRequest) mock.proxy();
+		context.checking(new Expectations() {{
+			one(channelHandler).channelCloseRequested(with(any(CloseChannelRequest.class)));
+			will(rejectCloseChannelRequest(0)); inSequence(sequence);
+			
+			one(callback).closeDeclined(550, "still working"); inSequence(sequence);
+		}});
 		
 		// test
-		handler.channelCloseRequested(request);
+		channel.channelCloseRequested(callback);
 		assertIsAlive(channel);
+		
+		// verify
+		assertIsSatisfied();
 	}
 	
 	public void testDelayedCloseRequestedDeclined() throws Exception {
-		InternalChannel channel = new ChannelImpl(session, PROFILE, CHANNEL);
-		ChannelHandler handler = channel.initChannel(channelHandler);
+		final Message m1 = new MessageStub();
+		final Message m2 = new MessageStub();
 		
-		Message m1 = new MessageStub();
-		Message m2 = new MessageStub();
+		final CloseCallback callback = context.mock(CloseCallback.class);
 		
-		ParameterCaptureStub<ReplyHandler> capture =
-			new ParameterCaptureStub<ReplyHandler>(3, ReplyHandler.class, null);
+		final ParameterCaptureAction<ReplyHandler> capture =
+			new ParameterCaptureAction<ReplyHandler>(3, ReplyHandler.class, null);
 		
 		// define expectations
-		sessionMock.expects(once()).method("sendMessage")
-				.with(eq(1), eq(1), same(m1), ANYTHING)
-				.will(capture);
-		
-		channelHandlerMock.expects(once()).method("channelCloseRequested")
-				.with(ANYTHING)
-				.will(new CloseRejectingRequest(0));
-		
-		sessionMock.expects(once()).method("sendMessage")
-				.with(eq(1), eq(2), same(m2), ANYTHING);
-		
-		Mock mock = mock(CloseChannelRequest.class);
-		mock.expects(once()).method("reject");
-		CloseChannelRequest request = (CloseChannelRequest) mock.proxy();
+		context.checking(new Expectations() {{
+			one(session).sendMSG(with(equal(1)), with(equal(1)), with(same(m1)), with(any(ReplyHandler.class)));
+			will(capture); inSequence(sequence);
+			
+			one(channelHandler).channelCloseRequested(with(any(CloseChannelRequest.class)));
+			will(rejectCloseChannelRequest(0)); inSequence(sequence);
+			
+			one(callback).closeDeclined(550, "still working"); inSequence(sequence);
+			
+			one(session).sendMSG(with(equal(1)), with(equal(2)), with(same(m2)), with(any(ReplyHandler.class)));
+			inSequence(sequence);
+		}});
 
 		// test
 		channel.sendMessage(m1, new NullReplyHandler());
-		handler.channelCloseRequested(request);
+		channel.channelCloseRequested(callback);
 		assertIsShuttingDown(channel);
 		
-		ReplyHandler listener = capture.getParameter();
-		listener.receivedNUL();
+		capture.getParameter().receivedNUL();
 		assertIsAlive(channel);
 		
 		channel.sendMessage(m2, new NullReplyHandler());
+		
+		// verify
+		assertIsSatisfied();
 	}
 	
-	private static class CloseAcceptingStub implements Stub {
+	private static Action acceptCloseChannel(int index) {
+		return new CloseAcceptingAction(index);
+	}
+	
+	private static class CloseAcceptingAction implements Action {
 		private final int index;
-		private CloseAcceptingStub(int index) {
+		private CloseAcceptingAction(int index) {
 			this.index = index;
 		}
-		public StringBuffer describeTo(StringBuffer buf) {
-			buf.append("stub[accept close request]");
-			return buf;
+		public void describeTo(Description description) {
+			description.appendText("stub[accept close request]");
 		}
 		public Object invoke(Invocation invocation) throws Throwable {
-			CloseChannelCallback callback = (CloseChannelCallback) invocation.parameterValues.get(index);
+			CloseCallback callback = (CloseCallback) invocation.getParameter(index);
 			callback.closeAccepted();
 			return null;
 		}
 	}
 	
-	private static class CloseAcceptingRequest implements Stub {
-		private final int index;
-		private CloseAcceptingRequest(int index) {
-			this.index = index;
-		}
-		public StringBuffer describeTo(StringBuffer buf) {
-			buf.append("stub[accept close request]");
-			return buf;
-		}
-		public Object invoke(Invocation invocation) throws Throwable {
-			CloseChannelRequest callback = (CloseChannelRequest) invocation.parameterValues.get(index);
-			callback.accept();
-			return null;
-		}
+	private static Action declineCloseChannel(int index, int code, String message) {
+		return new CloseDecliningAction(index, code, message);
 	}
 	
-	private static class CloseDecliningStub implements Stub {
+	private static class CloseDecliningAction implements Action {
 		private final int code;
 		private final String message;
 		private final int index;
-		private CloseDecliningStub(int index, int code, String message) {
+		private CloseDecliningAction(int index, int code, String message) {
 			this.code = code;
 			this.message = message;
 			this.index = index;
 		}
-		public StringBuffer describeTo(StringBuffer buf) {
-			buf.append("stub[decline close request]");
-			return buf;
+		public void describeTo(Description description) {
+			description.appendText("stub[decline close request]");
 		}
 		public Object invoke(Invocation invocation) throws Throwable {
-			CloseChannelCallback callback = (CloseChannelCallback) invocation.parameterValues.get(index);
+			CloseCallback callback = (CloseCallback) invocation.getParameter(index);
 			callback.closeDeclined(code, message);
 			return null;
 		}
 	}
 	
-	private static class CloseRejectingRequest implements Stub {
+	private static Action acceptCloseChannelRequest(int index) {
+		return new CloseRequestAcceptingAction(index);
+	}
+	
+	private static class CloseRequestAcceptingAction implements Action {
 		private final int index;
-		private CloseRejectingRequest(int index) {
+		private CloseRequestAcceptingAction(int index) {
 			this.index = index;
 		}
-		public StringBuffer describeTo(StringBuffer buf) {
-			buf.append("stub[decline close request]");
-			return buf;
+		public void describeTo(Description description) {
+			description.appendText("stub[accept close request]");
 		}
 		public Object invoke(Invocation invocation) throws Throwable {
-			CloseChannelRequest callback = (CloseChannelRequest) invocation.parameterValues.get(index);
-			callback.reject();
+			CloseChannelRequest request = (CloseChannelRequest) invocation.getParameter(index);
+			request.accept();
+			return null;
+		}
+	}
+	
+	private static Action rejectCloseChannelRequest(int index) {
+		return new CloseRequestRejectingAction(index);
+	}
+	
+	private static class CloseRequestRejectingAction implements Action {
+		private final int index;
+		private CloseRequestRejectingAction(int index) {
+			this.index = index;
+		}
+		public void describeTo(Description description) {
+			description.appendText("stub[reject close request]");
+		}
+		public Object invoke(Invocation invocation) throws Throwable {
+			CloseChannelRequest request = (CloseChannelRequest) invocation.getParameter(index);
+			request.reject();
 			return null;
 		}
 	}

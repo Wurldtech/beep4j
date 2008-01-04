@@ -26,17 +26,17 @@ import net.sf.beep4j.internal.util.Assert;
 /**
  * {@link ChannelHandler} for the BEEP management profile. Implements only
  * {@link #messageReceived(Message, Reply)} and dispatches directly to the
- * {@link ChannelManagementProfile}.
+ * {@link ManagementProfile}.
  * 
  * @author Simon Raess
  */
 final class ManagementChannelHandler implements ChannelHandler {
 	
-	private final ChannelManagementProfile profile;
+	private final ManagementProfile profile;
 	
-	private final ChannelManagementMessageParser parser;
+	private final ManagementMessageParser parser;
 	
-	ManagementChannelHandler(ChannelManagementProfile profile, ChannelManagementMessageParser parser) {
+	ManagementChannelHandler(ManagementProfile profile, ManagementMessageParser parser) {
 		Assert.notNull("profile", profile);
 		Assert.notNull("parser", parser);
 		this.profile = profile;
@@ -61,7 +61,7 @@ final class ManagementChannelHandler implements ChannelHandler {
 	}
 	
 	public void messageReceived(Message message, Reply reply) {
-		ChannelManagementRequest r = parser.parseRequest(message);
+		ManagementRequest r = parser.parseRequest(message);
 		
 		if (r instanceof StartChannelMessage) {
 			StartChannelMessage request = (StartChannelMessage) r;

@@ -15,7 +15,7 @@
  */
 package net.sf.beep4j.internal.management;
 
-final class CloseChannelMessage implements ChannelManagementRequest {
+final class CloseChannelMessage implements ManagementRequest {
 	
 	private final int channelNumber;
 	

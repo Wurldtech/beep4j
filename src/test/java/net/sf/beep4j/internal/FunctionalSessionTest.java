@@ -19,6 +19,8 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.Arrays;
 
+import junit.framework.TestCase;
+
 import net.sf.beep4j.Channel;
 import net.sf.beep4j.ChannelHandler;
 import net.sf.beep4j.CloseChannelCallback;
@@ -32,71 +34,95 @@ import net.sf.beep4j.Reply;
 import net.sf.beep4j.SessionHandler;
 import net.sf.beep4j.StartChannelRequest;
 import net.sf.beep4j.StartSessionRequest;
-import net.sf.beep4j.internal.management.ChannelManagementMessageBuilder;
+import net.sf.beep4j.internal.management.ManagementMessageBuilder;
 import net.sf.beep4j.internal.management.SaxMessageBuilder;
 import net.sf.beep4j.internal.message.DefaultMessageBuilder;
 import net.sf.beep4j.internal.stream.BeepStream;
 import net.sf.beep4j.internal.stream.MessageHandler;
 
-import org.jmock.Mock;
-import org.jmock.MockObjectTestCase;
-import org.jmock.core.Invocation;
-import org.jmock.core.Stub;
+import org.hamcrest.Description;
+import org.jmock.Expectations;
+import org.jmock.Mockery;
+import org.jmock.Sequence;
+import org.jmock.api.Action;
 
-public class FunctionalSessionTest extends MockObjectTestCase {
-	
+public class FunctionalSessionTest extends TestCase {
+
 	private static final String PROFILE = "http://www.example.com/profiles/echo";
-
-	private Mock sessionHandlerMock;
 	
 	private SessionHandler sessionHandler;
 	
-	private Mock beepStreamMock;
-	
 	private BeepStream beepStream;
+	
+	private Mockery context;
+	
+	private Sequence sequence;
 	
 	@Override
 	protected void setUp() throws Exception {
-		sessionHandlerMock = mock(SessionHandler.class);
-		sessionHandler = (SessionHandler) sessionHandlerMock.proxy();
-		beepStreamMock = mock(BeepStream.class);
-		beepStream = (BeepStream) beepStreamMock.proxy();
+		context = new Mockery();
+		sequence = context.sequence("main-sequence");
+		sessionHandler = context.mock(SessionHandler.class);
+		beepStream = context.mock(BeepStream.class);
 		setupTransportMapping();
 	}
 	
+	private void assertIsSatisfied() {
+		context.assertIsSatisfied();
+	}
+	
 	private void setupTransportMapping() {
-		beepStreamMock.expects(once()).method("channelStarted").with(eq(0));
+		context.checking(new Expectations() {{ 
+			one(beepStream).channelStarted(0); inSequence(sequence);
+		}});
 	}
 
 	/*
 	 * Scenario: session accepted, rejected by local peer
 	 */
 	public void testRejectSessionStart() throws Exception {
-		Stub rejector = new StartSessionRequestRejector(); 
+		// define expectations
+		context.checking(new Expectations() {{ 
+			one(sessionHandler).connectionEstablished(with(any(StartSessionRequest.class)));
+			will(rejectSessionStart()); inSequence(sequence);
+			
+			one(beepStream).sendERR(with(equal(0)), with(equal(0)), with(equal(createErrorMessage(421, "service not available"))));
+			inSequence(sequence);
+			
+			one(beepStream).closeTransport(); inSequence(sequence);
+		}});
 		
-		sessionHandlerMock.expects(once()).method("connectionEstablished").will(rejector);
-		beepStreamMock.expects(once()).method("sendERR").with(eq(0), eq(0), eq(createErrorMessage(421, "service not available")));
-		beepStreamMock.expects(once()).method("closeTransport");
-		
+		// test
 		SessionImpl session = new SessionImpl(false, sessionHandler, beepStream);
 		session.connectionEstablished(null);
+		
+		// verify
+		assertIsSatisfied();
 	}
 	
 	/*
 	 * Scenario: session initiated, rejected by remote peer.
 	 */
 	public void testSessionStartRejected() throws Exception {
-		Stub acceptor = new StartSessionRequestAcceptor(new String[] { PROFILE });
-		
-		sessionHandlerMock.expects(once()).method("connectionEstablished").will(acceptor);
-		sessionHandlerMock.expects(once()).method("sessionStartDeclined").with(eq(550), eq("listener not available"));
-		beepStreamMock.expects(once()).method("sendRPY")
-				.with(eq(0), eq(0), eq(createGreetingMessage(new String[] { PROFILE })));
-		beepStreamMock.expects(once()).method("closeTransport");
+		context.checking(new Expectations() {{ 
+			one(sessionHandler).connectionEstablished(with(any(StartSessionRequest.class)));
+			will(acceptSessionStart(new String[] { PROFILE })); inSequence(sequence);
+			
+			one(beepStream).sendRPY(with(equal(0)), with(equal(0)), with(equal(createGreetingMessage(new String[] { PROFILE }))));
+			inSequence(sequence);
+			
+			one(sessionHandler).sessionStartDeclined(550, "listener not available");
+			inSequence(sequence);
+			
+			one(beepStream).closeTransport(); inSequence(sequence);
+		}});
 		
 		SessionImpl session = new SessionImpl(true, sessionHandler, beepStream);
 		session.connectionEstablished(null);
 		session.receiveERR(0, 0, createErrorMessage(550, "listener not available"));
+		
+		// verify
+		assertIsSatisfied();
 	}
 	
 	/*
@@ -198,23 +224,34 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 	 */
 	public void testReceiveCloseChannelRequestWhenCloseAlreadyInitiated() throws Exception {
 		SessionImpl session = openSession(false, new String[] { PROFILE }, new String[0]);
-		ChannelStruct channel = startChannelRequested(1, 1, new ProfileInfo[] { new ProfileInfo(PROFILE) }, session);
+		final ChannelStruct channel = startChannelRequested(1, 1, new ProfileInfo[] { new ProfileInfo(PROFILE) }, session);
 		
-		Mock callbackMock = mock(CloseChannelCallback.class);
-		CloseChannelCallback callback = (CloseChannelCallback) callbackMock.proxy();
-		requestChannelClose(beepStreamMock, channel.channel, callback, 1, 1);
+		final CloseChannelCallback callback = context.mock(CloseChannelCallback.class);
+		requestChannelClose(beepStream, channel.channel, callback, 1, 1);
 		
 		// close requested and immediately accepted without calling back the application
 		Message request = createCloseMessage(1);		
-		Message reply = createOkMessage();
+		final Message reply = createOkMessage();
 		
-		callbackMock.expects(once()).method("closeAccepted");
-		channel.channelHandlerMock.expects(once()).method("channelClosed");
-		beepStreamMock.expects(once()).method("sendRPY")
-				.with(eq(0), eq(1), eq(reply));
-		beepStreamMock.expects(once()).method("channelClosed")
-				.with(eq(1));
+		// expectations
+		context.checking(new Expectations() {{
+			one(callback).closeAccepted(); inSequence(sequence);
+			
+			one(channel.handler).channelClosed();
+			inSequence(sequence);
+			
+			one(beepStream).sendRPY(0, 1, reply);
+			inSequence(sequence);
+			
+			one(beepStream).channelClosed(1);
+			inSequence(sequence);
+		}});
+		
+		// send close channel request
 		session.receiveMSG(0, 1, request);
+		
+		// verify
+		assertIsSatisfied();
 	}
 	
 	/*
@@ -253,24 +290,31 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 		SessionImpl session = openSession(false, new String[] { PROFILE }, new String[0]);
 		initiateCloseSession(session, 1);
 		
-		beepStreamMock.expects(once()).method("sendRPY")
-				.with(eq(0), eq(1), eq(createOkMessage()));
-		beepStreamMock.expects(once()).method("closeTransport");
-		sessionHandlerMock.expects(once()).method("sessionClosed");
+		context.checking(new Expectations() {{			
+			one(sessionHandler).sessionClosed(); inSequence(sequence);
+			
+			one(beepStream).sendRPY(0, 1, createOkMessage()); inSequence(sequence);
+			
+			one(beepStream).closeTransport(); inSequence(sequence);
+		}});
 		
 		session.receiveMSG(0, 1, createCloseMessage(0));
 	}
 
-	private SessionImpl openSession(boolean initiator, String[] profiles, String[] remoteProfiles) {
-		beepStreamMock.expects(once()).method("sendRPY")
-				.with(eq(0), eq(0), eq(createGreetingMessage(profiles)));
+	private SessionImpl openSession(boolean initiator, final String[] profiles, String[] remoteProfiles) {
+		context.checking(new Expectations() {{
+			one(beepStream).sendRPY(0, 0, createGreetingMessage(profiles)); inSequence(sequence);
+			
+			one(sessionHandler).connectionEstablished(with(any(StartSessionRequest.class)));
+			will(acceptSessionStart(profiles));
+		}});
 
-		SessionImpl session = new SessionImpl(initiator, sessionHandler, beepStream);
-
-		Stub acceptor = new StartSessionRequestAcceptor(profiles);
+		final SessionImpl session = new SessionImpl(initiator, sessionHandler, beepStream);
 		
-		sessionHandlerMock.expects(once()).method("connectionEstablished").will(acceptor);
-		sessionHandlerMock.expects(once()).method("sessionOpened").with(same(session));
+		context.checking(new Expectations() {{
+			one(sessionHandler).sessionOpened(with(same(session)));
+			inSequence(sequence);
+		}});
 		
 		session.connectionEstablished(null);
 		session.receiveRPY(0, 0, createGreetingMessage(remoteProfiles));
@@ -279,204 +323,307 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 	}
 	
 	private ChannelStruct startChannel(int channelNumber, int messageNumber, ProfileInfo[] profiles, SessionImpl session) {
-		Mock channelHandlerMock = mock(ChannelHandler.class);
-		ChannelHandler channelHandler = (ChannelHandler) channelHandlerMock.proxy();
+		final ChannelHandler channelHandler = context.mock(ChannelHandler.class);
+		final ParameterCaptureAction<Channel> channelExtractor = 
+				new ParameterCaptureAction<Channel>(0, Channel.class, null);
 		
-		ParameterCaptureStub<Channel> channelExtractor = 
-				new ParameterCaptureStub<Channel>(0, Channel.class, null);
-		channelHandlerMock.expects(once()).method("channelOpened").with(ANYTHING).will(channelExtractor);
+		// expectations
+		context.checking(new Expectations() {{
+			one(beepStream).sendMSG(with(equal(0)), with(equal(1)), with(equal(createStartMessage(1, new ProfileInfo[] { new ProfileInfo(PROFILE) }))));
+			inSequence(sequence);
+			
+			one(beepStream).channelStarted(1); inSequence(sequence);
+
+			one(channelHandler).channelOpened(with(any(Channel.class)));
+			will(channelExtractor); inSequence(sequence);			
+		}});
 		
-		beepStreamMock.expects(once()).method("sendMSG")
-				.with(eq(0), eq(1), eq(createStartMessage(1, new ProfileInfo[] { new ProfileInfo(PROFILE) })));
-		beepStreamMock.expects(once()).method("channelStarted").with(eq(1));
+		// start channel
 		session.startChannel(PROFILE, channelHandler);
 		session.receiveRPY(0, 1, createProfileMessage(new ProfileInfo(PROFILE)));
 		
 		Channel channel = channelExtractor.getParameter();
-		return new ChannelStruct(channel, channelHandlerMock);
+		return new ChannelStruct(channel, channelHandler);
 	}
 	
-	private ChannelStruct startChannelRequested(int channelNumber, int messageNumber, ProfileInfo[] profiles, SessionImpl session) {		
-		Mock channelHandlerMock = mock(ChannelHandler.class);
-		ChannelHandler channelHandler = (ChannelHandler) channelHandlerMock.proxy();
+	private ChannelStruct startChannelRequested(
+			final int channelNumber, 
+			final int messageNumber, 
+			ProfileInfo[] profiles, 
+			SessionImpl session) {
 		
-		ProfileInfo profile = profiles[0];
-		StartChannelRequestAcceptor acceptor = new StartChannelRequestAcceptor(profile, channelHandler);
+		final ChannelHandler channelHandler = context.mock(ChannelHandler.class);
+		final ProfileInfo profile = profiles[0];
 		
-		sessionHandlerMock.expects(once()).method("channelStartRequested")
-				.with(ANYTHING)
-				.will(acceptor);
+		final ParameterCaptureAction<Channel> channelExtractor = 
+			new ParameterCaptureAction<Channel>(0, Channel.class, null);
 		
-		beepStreamMock.expects(once()).method("channelStarted")
-				.with(eq(channelNumber));
-		beepStreamMock.expects(once()).method("sendRPY")
-				.with(eq(0), eq(messageNumber), eq(createProfileMessage(profile)));
-		
-		ParameterCaptureStub<Channel> channelExtractor = 
-			new ParameterCaptureStub<Channel>(0, Channel.class, null);
-		channelHandlerMock.expects(once()).method("channelOpened").with(ANYTHING).will(channelExtractor);
+		context.checking(new Expectations() {{ 
+			one(sessionHandler).channelStartRequested(with(any(StartChannelRequest.class)));
+			will(acceptStartChannel(profile, channelHandler)); inSequence(sequence);
+			
+			one(beepStream).channelStarted(channelNumber); inSequence(sequence);
+			
+			one(channelHandler).channelOpened(with(any(Channel.class))); 
+			will(channelExtractor); inSequence(sequence);
+			
+			one(beepStream).sendRPY(0, messageNumber, createProfileMessage(profile)); inSequence(sequence);
+		}});
 		
 		session.receiveMSG(0, messageNumber, createStartMessage(channelNumber, profiles));		
 		
 		Channel channel = channelExtractor.getParameter();
-		return new ChannelStruct(channel, channelHandlerMock);
+		return new ChannelStruct(channel, channelHandler);
 	}
 	
-	private void startChannelRequestedReject(SessionImpl session, int channelNumber, int messageNumber, ProfileInfo[] profiles) {
-		Stub stub = new StartChannelRequestRejector(550, "no profiles supported");
+	private void startChannelRequestedReject(
+			SessionImpl session, 
+			int channelNumber, 
+			final int messageNumber, 
+			ProfileInfo[] profiles) {
 		
-		sessionHandlerMock.expects(once()).method("channelStartRequested")
-				.with(ANYTHING).will(stub);
-		beepStreamMock.expects(once()).method("sendERR")
-				.with(eq(0), eq(messageNumber), eq(createErrorMessage(550, "no profiles supported")));
+		context.checking(new Expectations() {{
+			one(sessionHandler).channelStartRequested(with(any(StartChannelRequest.class)));
+			will(rejectStartChannel(550, "no profiles supported")); inSequence(sequence);
+			
+			one(beepStream).sendERR(0, messageNumber, createErrorMessage(550, "no profiles supported"));
+			inSequence(sequence);
+		}});
+
 		session.receiveMSG(0, messageNumber, createStartMessage(channelNumber, profiles));		
 	}
 	
-	private void startChannelRejected(SessionImpl session, int channelNumber, int messageNumber, ProfileInfo[] profiles) {
-		Mock channelHandlerMock = mock(ChannelHandler.class);
-		ChannelHandler channelHandler = (ChannelHandler) channelHandlerMock.proxy();
+	private void startChannelRejected(
+			final SessionImpl session, 
+			final int channelNumber, 
+			final int messageNumber, 
+			final ProfileInfo[] profiles) {
 		
-		beepStreamMock.expects(once()).method("sendMSG")
-				.with(eq(0), eq(messageNumber), eq(createStartMessage(channelNumber, profiles)));
-		channelHandlerMock.expects(once()).method("channelStartFailed")
-				.with(eq(550), eq("no profiles supported"));
+		final ChannelHandler channelHandler = context.mock(ChannelHandler.class);
+		final int errorCode = 550;
+		final String errorMessage = "no profiles supported";
+		
+		context.checking(new Expectations() {{
+			one(beepStream).sendMSG(0, messageNumber, createStartMessage(channelNumber, profiles));
+			inSequence(sequence);
+			
+			one(channelHandler).channelStartFailed(errorCode, errorMessage);
+		}});
 		
 		session.startChannel(profiles[0], channelHandler);
-		session.receiveERR(0, messageNumber, createErrorMessage(550, "no profiles supported"));
+		session.receiveERR(0, messageNumber, createErrorMessage(errorCode, errorMessage));
 	}
 
-	private void closeChannel(SessionImpl session, ChannelStruct channel, 
-			int channelNumber, int messageNumber) {
-		Mock closeChannelCallbackMock = mock(CloseChannelCallback.class);
-		CloseChannelCallback closeChannelCallback = (CloseChannelCallback) closeChannelCallbackMock.proxy();
+	private void closeChannel(
+			final SessionImpl session, 
+			final ChannelStruct channel, 
+			final int channelNumber, 
+			final int messageNumber) {
 		
-		beepStreamMock.expects(once()).method("sendMSG")
-				.with(eq(0), eq(messageNumber), eq(createCloseMessage(channelNumber)));
-		channel.channel.close(closeChannelCallback);
+		final CloseChannelCallback callback = context.mock(CloseChannelCallback.class);
 		
-		channel.channelHandlerMock.expects(once()).method("channelClosed");
-		beepStreamMock.expects(once()).method("channelClosed").with(eq(channelNumber));
-		closeChannelCallbackMock.expects(once()).method("closeAccepted");
+		context.checking(new Expectations() {{
+			one(beepStream).sendMSG(0, messageNumber, createCloseMessage(channelNumber));
+			inSequence(sequence);
+		}});
+
+		channel.channel.close(callback);
+		
+		context.checking(new Expectations() {{
+			one(callback).closeAccepted(); inSequence(sequence);
+			
+			one(channel.handler).channelClosed(); inSequence(sequence);
+			
+			one(beepStream).channelClosed(channelNumber); inSequence(sequence);
+		}});
+
 		session.receiveRPY(0, messageNumber, createOkMessage());
 	}
 	
-	private void closeChannelRejected(SessionImpl session, ChannelStruct channel,
-			int channelNumber, int messageNumber) {
-		Mock closeChannelCallbackMock = mock(CloseChannelCallback.class);
-		CloseChannelCallback closeChannelCallback = (CloseChannelCallback) closeChannelCallbackMock.proxy();
+	private void closeChannelRejected(
+			final SessionImpl session, 
+			final ChannelStruct channel,
+			final int channelNumber, 
+			final int messageNumber) {
 		
-		beepStreamMock.expects(once()).method("sendMSG")
-				.with(eq(0), eq(messageNumber), eq(createCloseMessage(channelNumber)));
-		channel.channel.close(closeChannelCallback);
+		final CloseChannelCallback callback = context.mock(CloseChannelCallback.class);
 		
-		closeChannelCallbackMock.expects(once()).method("closeDeclined")
-				.with(eq(550), eq("still working"));
-		session.receiveERR(0, messageNumber, createErrorMessage(550, "still working"));
+		context.checking(new Expectations() {{
+			one(beepStream).sendMSG(0, messageNumber, createCloseMessage(channelNumber)); 
+			inSequence(sequence);
+		}});
+
+		channel.channel.close(callback);
+
+		final int errorCode = 550;
+		final String errorMessage = "still working";
+		
+		context.checking(new Expectations() {{
+			one(callback).closeDeclined(errorCode, errorMessage);  
+			inSequence(sequence);
+		}});
+
+		session.receiveERR(0, messageNumber, createErrorMessage(550, errorMessage));
 	}
 	
 	private void requestChannelClose(
-			Mock transportMappingMock,
+			final BeepStream beepStream,
 			Channel channel,
 			CloseChannelCallback callback,
 			int channelNumber,
-			int messageNumber) {
-		Message request = createCloseMessage(channelNumber);
+			final int messageNumber) {
+		final Message request = createCloseMessage(channelNumber);
 		
-		transportMappingMock.expects(once()).method("sendMSG")
-				.with(eq(0), eq(messageNumber), eq(request));
+		// define expectation
+		context.checking(new Expectations() {{ 
+			one(beepStream).sendMSG(0, messageNumber, request);
+		}});
+
+		// request channel close
 		channel.close(callback);
 	}
 	
-	private void closeChannelRequested(SessionImpl session, ChannelStruct channel, 
-			int channelNumber, int messageNumber) {
-		Stub closeChannelAcceptor = new CloseChannelAcceptor();
+	private void closeChannelRequested(
+			SessionImpl session, 
+			final ChannelStruct channel, 
+			int channelNumber, 
+			final int messageNumber) {
 		
-		Message request = createCloseMessage(1);		
-		Message reply = createOkMessage();
-		
-		channel.channelHandlerMock.expects(once()).method("channelCloseRequested")
-				.with(ANYTHING).will(closeChannelAcceptor);
-		channel.channelHandlerMock.expects(once()).method("channelClosed");
-		beepStreamMock.expects(once()).method("sendRPY")
-				.with(eq(0), eq(messageNumber), eq(reply));
-		beepStreamMock.expects(once()).method("channelClosed")
-				.with(eq(1));
-		session.receiveMSG(0, messageNumber, request);
+		context.checking(new Expectations() {{
+			one(channel.handler).channelCloseRequested(with(any(CloseChannelRequest.class)));
+			will(acceptCloseChannel()); inSequence(sequence);
+			
+			one(channel.handler).channelClosed(); inSequence(sequence);
+			
+			one(beepStream).sendRPY(0, messageNumber, createOkMessage()); inSequence(sequence);
+			
+			one(beepStream).channelClosed(1); inSequence(sequence);			
+		}});
+
+		session.receiveMSG(0, messageNumber, createCloseMessage(1));
 	}
 
 	private void closeSession(SessionImpl session, int messageNumber) {
 		initiateCloseSession(session, messageNumber);
-		sessionHandlerMock.expects(once()).method("sessionClosed");
-		beepStreamMock.expects(once()).method("closeTransport");
+		
+		context.checking(new Expectations() {{
+			one(sessionHandler).sessionClosed(); inSequence(sequence);
+			
+			one(beepStream).closeTransport(); inSequence(sequence);
+		}});
+
 		session.receiveRPY(0, messageNumber, createOkMessage());
 	}
 	
-	private void initiateCloseSession(SessionImpl session, int messageNumber) {
-		beepStreamMock.expects(once()).method("sendMSG")
-				.with(eq(0), eq(messageNumber), eq(createCloseMessage(0)));
+	private void initiateCloseSession(SessionImpl session, final int messageNumber) {
+		context.checking(new Expectations() {{
+			one(beepStream).sendMSG(0, messageNumber, createCloseMessage(0));
+		}});
 		session.close();
 	}
 	
-	private void closeSessionRequested(SessionImpl session, int messageNumber) {
+	private void closeSessionRequested(SessionImpl session, final int messageNumber) {
 		Message request = createCloseMessage(0);
-		beepStreamMock.expects(once()).method("sendRPY")
-		        .with(eq(0), eq(messageNumber), eq(createOkMessage()));
-		beepStreamMock.expects(once()).method("closeTransport");
-		sessionHandlerMock.expects(once()).method("sessionClosed");
+		
+		context.checking(new Expectations() {{			
+			one(beepStream).sendRPY(0, messageNumber, createOkMessage()); inSequence(sequence);
+			
+			one(sessionHandler).sessionClosed(); inSequence(sequence);
+			
+			one(beepStream).closeTransport(); inSequence(sequence);
+		}});
+
 		session.receiveMSG(0, messageNumber, request);
 	}
 	
-	private void closeSessionRequestedReject(SessionImpl session, int messageNumber) {
+	private void closeSessionRequestedReject(SessionImpl session, final int messageNumber) {
 		Message request = createCloseMessage(0);
-		beepStreamMock.expects(once()).method("sendERR")
-		        .with(eq(0), eq(messageNumber), eq(createErrorMessage(550, "still working")));
+		
+		context.checking(new Expectations() {{
+			one(beepStream).sendERR(0, messageNumber, createErrorMessage(550, "still working"));
+		}});
+
 		session.receiveMSG(0, messageNumber, request);
 	}
 	
-	private Mock sendEcho(Channel channel, int channelNumber, int messageNumber, String content) throws IOException {
-		Mock replyListenerMock = mock(ReplyHandler.class);
-		ReplyHandler replyListener = (ReplyHandler) replyListenerMock.proxy();
+	private ReplyHandler sendEcho(Channel channel, final int channelNumber, final int messageNumber, String content) throws IOException {
+		final ReplyHandler replyHandler = context.mock(ReplyHandler.class, "echo-" + channelNumber + "-" + messageNumber);
+		final Message request = createEchoMessage(content);
 		
-		Message request = createEchoMessage(content);		
-		beepStreamMock.expects(once()).method("sendMSG")
-				.with(eq(channelNumber), eq(messageNumber), same(request));
-		channel.sendMessage(request, replyListener);
+		// define expectations
+		context.checking(new Expectations() {{ 
+			one(beepStream).sendMSG(channelNumber, messageNumber, request);
+		}});
 		
-		return replyListenerMock;
+		// send message
+		channel.sendMessage(request, replyHandler);
+		
+		return replyHandler;
 	}
 	
-	private void receiveEcho(MessageHandler messageHandler, Mock listenerMock, int channelNumber, int messageNumber, String content) throws IOException {
-		Message reply = createEchoMessage(content);
-		listenerMock.expects(once()).method("receivedRPY").with(same(reply));
+	private void receiveEcho(
+			MessageHandler messageHandler, 
+			final ReplyHandler handler, 
+			int channelNumber, 
+			int messageNumber, 
+			String content) throws IOException {
+		
+		final Message reply = createEchoMessage(content);
+		
+		context.checking(new Expectations() {{ 
+			one(handler).receivedRPY(reply); inSequence(sequence);
+		}});
+
 		messageHandler.receiveRPY(channelNumber, messageNumber, reply);
 	}
 	
-	private void sendAndReceiveEcho(MessageHandler messageHandler, Channel channel, 
-			int channelNumber, int messageNumber, String content) throws IOException {
-		Mock replyListenerMock = sendEcho(channel, channelNumber, messageNumber, content);
-		receiveEcho(messageHandler, replyListenerMock, channelNumber, messageNumber, content);
+	private void sendAndReceiveEcho(
+			MessageHandler messageHandler, 
+			Channel channel, 
+			int channelNumber, 
+			int messageNumber, 
+			String content) throws IOException {
+		
+		ReplyHandler handler = sendEcho(channel, channelNumber, messageNumber, content);
+		receiveEcho(messageHandler, handler, channelNumber, messageNumber, content);
 	}
 	
-	private void receiveAndReplyEcho(MessageHandler messageHandler, ChannelStruct channel,
-			int channelNumber, int messageNumber, String content) throws IOException {
-		ParameterCaptureStub<Reply> extractor = 
-				new ParameterCaptureStub<Reply>(1, Reply.class, null);
+	private void receiveAndReplyEcho(
+			final MessageHandler messageHandler, 
+			final ChannelStruct channel,
+			final int channelNumber, 
+			final int messageNumber, 
+			final String content) throws IOException {
 		
-		Message request = createEchoMessage(content);
-		Message reply = createEchoMessage(content);
+		final ParameterCaptureAction<Reply> extractReply = 
+				new ParameterCaptureAction<Reply>(1, Reply.class, null);
 		
-		channel.channelHandlerMock.expects(once()).method("messageReceived")
-				.with(same(request), ANYTHING).will(extractor);
+		final Message request = createEchoMessage(content);
+		final Message reply = createEchoMessage(content);
+		
+		// expectations
+		context.checking(new Expectations() {{
+			one(channel.handler).messageReceived(with(equal(request)), with(any(Reply.class)));
+			will(extractReply); inSequence(sequence);
+		}});
 		
 		messageHandler.receiveMSG(channelNumber, messageNumber, request);
 		
-		Reply responseHandler = extractor.getParameter();		
-		beepStreamMock.expects(once()).method("sendRPY").with(eq(channelNumber), eq(messageNumber), same(reply));
+		Reply responseHandler = extractReply.getParameter();
+		
+		// expectations
+		context.checking(new Expectations() {{
+			one(beepStream).sendRPY(channelNumber, messageNumber, reply); inSequence(sequence);
+		}});
+
 		responseHandler.sendRPY(reply);
 	}
 	
 	private void connectionClosed(SessionImpl session) {
-		sessionHandlerMock.expects(once()).method("sessionClosed");
+		context.checking(new Expectations() {{
+			one(sessionHandler).sessionClosed(); inSequence(sequence);
+		}});
+
 		session.connectionClosed();
 	}
 	
@@ -494,7 +641,7 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 		MessageBuilder messageBuilder = new DefaultMessageBuilder();
 		messageBuilder.setCharsetName("UTF-8");
 		messageBuilder.setContentType("application", "beep+xml");
-		ChannelManagementMessageBuilder builder = new SaxMessageBuilder();
+		ManagementMessageBuilder builder = new SaxMessageBuilder();
 		return builder.createError(messageBuilder, code, message);
 	}
 	
@@ -502,7 +649,7 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 		MessageBuilder messageBuilder = new DefaultMessageBuilder();
 		messageBuilder.setCharsetName("UTF-8");
 		messageBuilder.setContentType("application", "beep+xml");
-		ChannelManagementMessageBuilder builder = new SaxMessageBuilder();
+		ManagementMessageBuilder builder = new SaxMessageBuilder();
 		return builder.createOk(messageBuilder);
 	}
 	
@@ -510,7 +657,7 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 		MessageBuilder messageBuilder = new DefaultMessageBuilder();
 		messageBuilder.setCharsetName("UTF-8");
 		messageBuilder.setContentType("application", "beep+xml");
-		ChannelManagementMessageBuilder builder = new SaxMessageBuilder();
+		ManagementMessageBuilder builder = new SaxMessageBuilder();
 		return builder.createGreeting(messageBuilder, profiles);
 	}
 	
@@ -518,7 +665,7 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 		MessageBuilder messageBuilder = new DefaultMessageBuilder();
 		messageBuilder.setCharsetName("UTF-8");
 		messageBuilder.setContentType("application", "beep+xml");
-		ChannelManagementMessageBuilder builder = new SaxMessageBuilder();
+		ManagementMessageBuilder builder = new SaxMessageBuilder();
 		return builder.createProfile(messageBuilder, profile);
 	}
 	
@@ -526,7 +673,7 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 		MessageBuilder messageBuilder = new DefaultMessageBuilder();
 		messageBuilder.setCharsetName("UTF-8");
 		messageBuilder.setContentType("application", "beep+xml");
-		ChannelManagementMessageBuilder builder = new SaxMessageBuilder();
+		ManagementMessageBuilder builder = new SaxMessageBuilder();
 		return builder.createStart(messageBuilder, channelNumber, profiles);
 	}
 	
@@ -534,40 +681,48 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 		MessageBuilder messageBuilder = new DefaultMessageBuilder();
 		messageBuilder.setCharsetName("UTF-8");
 		messageBuilder.setContentType("application", "beep+xml");
-		ChannelManagementMessageBuilder builder = new SaxMessageBuilder();
+		ManagementMessageBuilder builder = new SaxMessageBuilder();
 		return builder.createClose(messageBuilder, channelNumber, 200);
 	}
 	
 	private static class ChannelStruct {
-		private final Mock channelHandlerMock;
+		private final ChannelHandler handler;
 		private final Channel channel;
-		private ChannelStruct(Channel channel, Mock channelHandlerMock) {
+		private ChannelStruct(Channel channel, ChannelHandler handler) {
 			this.channel = channel;
-			this.channelHandlerMock = channelHandlerMock;
+			this.handler = handler;
 		}
 	}
 	
-	private static class StartSessionRequestRejector implements Stub {
-		public StringBuffer describeTo(StringBuffer buffer) {
-			return buffer.append("rejects session start");
+	private static Action rejectSessionStart() {
+		return new StartSessionRequestRejector();
+	}
+
+	private static class StartSessionRequestRejector implements Action {
+		public void describeTo(Description description) {
+			description.appendText("rejects session start");
 		}
-		public Object invoke(Invocation invocation) throws Throwable {
-			StartSessionRequest request = (StartSessionRequest) invocation.parameterValues.get(0);
+		public Object invoke(org.jmock.api.Invocation invocation) throws Throwable {
+			StartSessionRequest request = (StartSessionRequest) invocation.getParameter(0);
 			request.cancel();
 			return null;
 		}
 	}
 	
-	private static class StartSessionRequestAcceptor implements Stub {
+	private static Action acceptSessionStart(String[] profileUris) {
+		return new StartSessionRequestAcceptor(profileUris);
+	}
+	
+	private static class StartSessionRequestAcceptor implements Action {
 		private final String[] profileUris;
 		public StartSessionRequestAcceptor(String[] profileUris) {
 			this.profileUris = profileUris;
 		}
-		public StringBuffer describeTo(StringBuffer buffer) {
-			return buffer.append("accepts session start");
+		public void describeTo(Description description) {
+			description.appendText("accepts session start");
 		}
-		public Object invoke(Invocation invocation) throws Throwable {
-			StartSessionRequest request = (StartSessionRequest) invocation.parameterValues.get(0);
+		public Object invoke(org.jmock.api.Invocation invocation) throws Throwable {
+			StartSessionRequest request = (StartSessionRequest) invocation.getParameter(0);
 			for (int i = 0; i < profileUris.length; i++) {
 				request.registerProfile(profileUris[i]);
 			}
@@ -575,46 +730,58 @@ public class FunctionalSessionTest extends MockObjectTestCase {
 		}
 	}
 	
-	private static class StartChannelRequestAcceptor implements Stub {
+	private static Action acceptStartChannel(ProfileInfo profile, ChannelHandler channelHandler) {
+		return new StartChannelRequestAcceptor(profile, channelHandler);
+	}
+	
+	private static class StartChannelRequestAcceptor implements Action {
 		private final ProfileInfo profile;
 		private final ChannelHandler channelHandler;
 		private StartChannelRequestAcceptor(ProfileInfo profile, ChannelHandler channelHandler) {
 			this.profile = profile;
 			this.channelHandler = channelHandler;
 		}
-		public StringBuffer describeTo(StringBuffer buffer) {
-			return buffer.append("accepts channel start");
+		public void describeTo(Description description) {
+			description.appendText("accepts channel start");
 		}
-		public Object invoke(Invocation invocation) throws Throwable {
-			StartChannelRequest request = (StartChannelRequest) invocation.parameterValues.get(0);
+		public Object invoke(org.jmock.api.Invocation invocation) throws Throwable {
+			StartChannelRequest request = (StartChannelRequest) invocation.getParameter(0);
 			request.selectProfile(profile, channelHandler);
 			return null;
 		}
 	}
 	
-	private static class StartChannelRequestRejector implements Stub {
+	private static Action rejectStartChannel(int code, String message) {
+		return new StartChannelRequestRejector(code, message);
+	}
+	
+	private static class StartChannelRequestRejector implements Action {
 		private final int code;
 		private final String message;
 		private StartChannelRequestRejector(int code, String message) {
 			this.code = code;
 			this.message = message;
 		}
-		public StringBuffer describeTo(StringBuffer buffer) {
-			return buffer.append("rejects channel start");
+		public void describeTo(Description description) {
+			description.appendText("rejects channel start");
 		}
-		public Object invoke(Invocation invocation) throws Throwable {
-			StartChannelRequest request = (StartChannelRequest) invocation.parameterValues.get(0);
+		public Object invoke(org.jmock.api.Invocation invocation) throws Throwable {
+			StartChannelRequest request = (StartChannelRequest) invocation.getParameter(0);
 			request.cancel(code, message);
 			return null;
 		}
 	}
 	
-	private static class CloseChannelAcceptor implements Stub {
-		public StringBuffer describeTo(StringBuffer buffer) {
-			return buffer.append("accepts close channel");
+	private static Action acceptCloseChannel() {
+		return new CloseChannelAcceptor();
+	}
+	
+	private static class CloseChannelAcceptor implements Action {
+		public void describeTo(Description description) {
+			description.appendText("accepts close channel");
 		}
-		public Object invoke(Invocation invocation) throws Throwable {
-			CloseChannelRequest callback = (CloseChannelRequest) invocation.parameterValues.get(0);
+		public Object invoke(org.jmock.api.Invocation invocation) throws Throwable {
+			CloseChannelRequest callback = (CloseChannelRequest) invocation.getParameter(0);
 			callback.accept();
 			return null;
 		}
