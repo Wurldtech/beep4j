@@ -1,5 +1,5 @@
 /*
- *  Copyright 2006 Simon Raess
+ *  Copyright 2007 Simon Raess
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -13,84 +13,53 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package net.sf.beep4j.internal;
 
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.Lock;
 
-import net.sf.beep4j.Message;
-import net.sf.beep4j.MessageBuilder;
-import net.sf.beep4j.Reply;
+import net.sf.beep4j.CloseChannelCallback;
 import net.sf.beep4j.internal.util.Assert;
 
-/**
- * Decorator reply adding locking around calls to the target
- * Reply.
- * 
- * @author Simon Raess
- */
-final class LockingReply implements Reply {
+final class UnlockingCloseChannelCallback implements CloseChannelCallback {
 	
-	private final Reply target;
+	private final CloseChannelCallback target;
 	
-	private final ReentrantLock lock;
+	private final Lock lock;
 	
-	LockingReply(Reply target, ReentrantLock lock) {
+	public UnlockingCloseChannelCallback(CloseChannelCallback target, Lock lock) {
 		Assert.notNull("target", target);
 		this.target = target;
 		this.lock = lock;
 	}
 	
-	public MessageBuilder createMessageBuilder() {
-		return target.createMessageBuilder();
-	}
-
 	private void unlock() {
 		if (lock != null) {
 			lock.unlock();
 		}
 	}
-
+	
 	private void lock() {
 		if (lock != null) {
 			lock.lock();
 		}
 	}
 	
-	public void sendANS(Message message) {
-		lock();
+	public void closeAccepted() {
+		unlock();
 		try {
-			target.sendANS(message);
+			target.closeAccepted();
 		} finally {
-			unlock();
+			lock();
 		}
 	}
-	
-	public void sendNUL() {
-		lock();
+
+	public void closeDeclined(int code, String message) {
+		unlock();
 		try {
-			target.sendNUL();
+			target.closeDeclined(code, message);
 		} finally {
-			unlock();
+			lock();
 		}
 	}
-	
-	public void sendERR(Message message) {
-		lock();
-		try {
-			target.sendERR(message);
-		} finally {
-			unlock();
-		}
-	}
-	
-	public void sendRPY(Message message) {
-		lock();
-		try {
-			target.sendRPY(message);
-		} finally {
-			unlock();
-		}
-	}
-	
+
 }

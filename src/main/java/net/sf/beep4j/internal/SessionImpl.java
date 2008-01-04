@@ -99,7 +99,7 @@ public class SessionImpl
 		Assert.notNull("beepStream", beepStream);
 		
 		this.initiator = initiator;
-		this.sessionHandler = new SessionHandlerWrapper(sessionHandler, sessionLock);
+		this.sessionHandler = new UnlockingSessionHandler(sessionHandler, sessionLock);
 		this.beepStream = beepStream;
 		
 		addSessionListener(beepStream);
@@ -137,18 +137,18 @@ public class SessionImpl
 	}
 
 	protected void initChannelManagementProfile() {
-		InternalChannel channel = new ChannelImpl(this, null, 0);
+		InternalChannel channel = new ChannelImpl(this, null, 0, null);
 		ChannelHandler channelHandler = channelManagementProfile.createChannelHandler(this, channel);
 		registerChannel(0, channel);
 		channel.channelOpened(channelHandler);
 	}
 		
 	protected InternalChannel createChannel(InternalSession session, String profileUri, int channelNumber) {
-		return new ChannelImpl(session, profileUri, channelNumber);
+		return new ChannelImpl(session, profileUri, channelNumber, sessionLock);
 	}
 	
 	private ChannelHandler initChannel(InternalChannel channel, ChannelHandler handler) {
-		return new ChannelHandlerWrapper(handler, sessionLock);
+		return new UnlockingChannelHandler(handler, sessionLock);
 	}
 	
 	protected void lock() {

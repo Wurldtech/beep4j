@@ -63,7 +63,7 @@ public class ChannelImplTest extends TestCase {
 			one(channelHandler).channelOpened(with(any(Channel.class))); inSequence(sequence);
 		}});
 		
-		channel = new ChannelImpl(session, PROFILE, CHANNEL);
+		channel = new ChannelImpl(session, PROFILE, CHANNEL, null);
 		channel.channelOpened(channelHandler);
 	}
 	

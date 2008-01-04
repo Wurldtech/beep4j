@@ -28,8 +28,4 @@ public interface ChannelFilterChain {
 	
 	void addBefore(Class<? extends ChannelFilter> before, ChannelFilter filter);
 	
-	void fireFilterSendMessage(Message message, ReplyHandler listener);
-	
-	void fireFilterClose(CloseChannelCallback callback);
-	
 }

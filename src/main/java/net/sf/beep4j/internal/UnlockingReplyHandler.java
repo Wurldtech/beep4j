@@ -1,5 +1,5 @@
 /*
- *  Copyright 2006 Simon Raess
+ *  Copyright 2007 Simon Raess
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -21,30 +21,22 @@ import net.sf.beep4j.Message;
 import net.sf.beep4j.ReplyHandler;
 import net.sf.beep4j.internal.util.Assert;
 
-class ReplyHandlerHolder {
-	private final int messageNumber;
-	private final ReplyHandler replyHandler;
+/**
+ * ReplyHandler that unlocks a lock before calling a target handler. After
+ * returning from the target handler, the lock is again acquired.
+ * 
+ * @author Simon Raess
+ */
+final class UnlockingReplyHandler implements ReplyHandler {
+	
+	private final ReplyHandler target;
+	
 	private final ReentrantLock lock;
-
-	ReplyHandlerHolder(int messageNumber, ReplyHandler replyHandler) {
-		this(messageNumber, replyHandler, null);
-	}
-
-	ReplyHandlerHolder(int messageNumber, ReplyHandler replyHandler, ReentrantLock lock) {
-		Assert.notNull("replyHandler", replyHandler);
-		this.messageNumber = messageNumber;
-		this.replyHandler = replyHandler;
+	
+	public UnlockingReplyHandler(ReplyHandler target, ReentrantLock lock) {
+		Assert.notNull("target", target);
+		this.target = target;
 		this.lock = lock;
-	}
-	
-	int getMessageNumber() {
-		return messageNumber;
-	}
-	
-	private void lock() {
-		if (lock != null) {
-			lock.lock();
-		}
 	}
 	
 	private void unlock() {
@@ -53,40 +45,47 @@ class ReplyHandlerHolder {
 		}
 	}
 	
-	protected void receivedANS(Message message) {
+	private void lock() {
+		if (lock != null) {
+			lock.lock();
+		}
+	}
+	
+	public void receivedANS(Message message) {
 		unlock();
 		try {
-			replyHandler.receivedANS(message);
+			target.receivedANS(message);
 		} finally {
 			lock();
 		}
 	}
-	
-	void receivedNUL() {
+
+	public void receivedERR(Message message) {
 		unlock();
 		try {
-			replyHandler.receivedNUL();
+			target.receivedERR(message);
 		} finally {
 			lock();
 		}
 	}
-	
-	void receivedERR(Message message) {
+
+	public void receivedNUL() {
 		unlock();
 		try {
-			replyHandler.receivedERR(message);
+			target.receivedNUL();
 		} finally {
 			lock();
 		}
 	}
-	
-	void receivedRPY(Message message) {
+
+	public void receivedRPY(Message message) {
 		unlock();
 		try {
-			replyHandler.receivedRPY(message);
+			target.receivedRPY(message);
 		} finally {
 			lock();
 		}
 	}
-	
+
 }
+

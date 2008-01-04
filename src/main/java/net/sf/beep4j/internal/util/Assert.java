@@ -37,7 +37,7 @@ public final class Assert {
 	}
 	
 	public static final void holdsLock(String name, ReentrantLock lock) {
-		if (!lock.isHeldByCurrentThread()) {
+		if (lock != null && !lock.isHeldByCurrentThread()) {
 			throw new IllegalStateException("current thread does not hold " + name + " lock");
 		}
 	}

@@ -18,28 +18,19 @@ package net.sf.beep4j.internal;
 
 import java.util.concurrent.locks.Lock;
 
-import net.sf.beep4j.Channel;
-import net.sf.beep4j.ChannelHandler;
-import net.sf.beep4j.CloseChannelRequest;
-import net.sf.beep4j.Message;
-import net.sf.beep4j.Reply;
+import net.sf.beep4j.Session;
+import net.sf.beep4j.SessionHandler;
+import net.sf.beep4j.StartChannelRequest;
+import net.sf.beep4j.StartSessionRequest;
 import net.sf.beep4j.internal.util.Assert;
 
-/**
- * {@link ChannelHandler} implementation that unlocks the given lock
- * before calling a target ChannelHandler. Further it guarantees that
- * the lock is again locked as soon as the target ChannelHandler
- * returns.
- * 
- * @author Simon Raess
- */
-final class ChannelHandlerWrapper implements ChannelHandler {
+class UnlockingSessionHandler implements SessionHandler {
 	
-	private final ChannelHandler target;
+	private final SessionHandler target;
 	
 	private final Lock lock;
 	
-	ChannelHandlerWrapper(ChannelHandler target, Lock lock) {
+	UnlockingSessionHandler(SessionHandler target, Lock lock) {
 		Assert.notNull("target", target);
 		Assert.notNull("lock", lock);
 		this.target = target;
@@ -54,46 +45,46 @@ final class ChannelHandlerWrapper implements ChannelHandler {
 		lock.unlock();
 	}
 	
-	public void channelOpened(Channel c) {
+	public void connectionEstablished(StartSessionRequest s) {
 		unlock();
 		try {
-			target.channelOpened(c);
+			target.connectionEstablished(s);
 		} finally {
 			lock();
 		}
 	}
 	
-	public void channelStartFailed(int code, String message) {
+	public void sessionOpened(Session s) {
 		unlock();
 		try {
-			target.channelStartFailed(code, message);
+			target.sessionOpened(s);
 		} finally {
 			lock();
 		}
 	}
 	
-	public void messageReceived(Message message, Reply reply) {
+	public void sessionStartDeclined(int code, String message) {
 		unlock();
 		try {
-			target.messageReceived(message, reply);
+			target.sessionStartDeclined(code, message);
 		} finally {
 			lock();
 		}
 	}
 	
-	public void channelCloseRequested(CloseChannelRequest request) {
+	public void channelStartRequested(StartChannelRequest request) {
 		unlock();
 		try {
-			target.channelCloseRequested(request);
+			target.channelStartRequested(request);
 		} finally {
 			lock();
 		}
 	}
 	
-	public void channelClosed() {
+	public void sessionClosed() {
 		unlock();
 		try {
-			target.channelClosed();
+			target.sessionClosed();
 		} finally {
 			lock();
 		}
