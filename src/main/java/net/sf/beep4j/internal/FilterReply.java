@@ -13,79 +13,62 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 package net.sf.beep4j.internal;
-
-import java.util.concurrent.locks.ReentrantLock;
 
 import net.sf.beep4j.Message;
 import net.sf.beep4j.Reply;
 import net.sf.beep4j.internal.util.Assert;
 
 /**
- * Decorator reply adding locking around calls to the target
- * Reply.
- * 
  * @author Simon Raess
  */
-final class LockingReply implements Reply {
+class FilterReply implements Reply {
+	
+	private final InternalChannelFilterChain filterChain;
 	
 	private final Reply target;
 	
-	private final ReentrantLock lock;
-	
-	LockingReply(Reply target, ReentrantLock lock) {
+	FilterReply(InternalChannelFilterChain filterChain, Reply target) {
+		Assert.notNull("filterChain", filterChain);
 		Assert.notNull("target", target);
+		this.filterChain = filterChain;
 		this.target = target;
-		this.lock = lock;
 	}
 
-	private void unlock() {
-		if (lock != null) {
-			lock.unlock();
-		}
-	}
-
-	private void lock() {
-		if (lock != null) {
-			lock.lock();
-		}
-	}
-	
 	public void sendANS(Message message) {
-		lock();
+		FilterChainTargetHolder.setReply(target);
 		try {
-			target.sendANS(message);
+			filterChain.fireFilterSendANS(message);
 		} finally {
-			unlock();
+			FilterChainTargetHolder.setReply(null);
 		}
 	}
-	
-	public void sendNUL() {
-		lock();
-		try {
-			target.sendNUL();
-		} finally {
-			unlock();
-		}
-	}
-	
+
 	public void sendERR(Message message) {
-		lock();
+		FilterChainTargetHolder.setReply(target);
 		try {
-			target.sendERR(message);
+			filterChain.fireFilterSendERR(message);
 		} finally {
-			unlock();
+			FilterChainTargetHolder.setReply(null);
 		}
 	}
-	
+
+	public void sendNUL() {
+		FilterChainTargetHolder.setReply(target);
+		try {
+			filterChain.fireFilterSendNUL();
+		} finally {
+			FilterChainTargetHolder.setReply(null);
+		}
+	}
+
 	public void sendRPY(Message message) {
-		lock();
+		FilterChainTargetHolder.setReply(target);
 		try {
-			target.sendRPY(message);
+			filterChain.fireFilterSendRPY(message);
 		} finally {
-			unlock();
+			FilterChainTargetHolder.setReply(null);
 		}
 	}
-	
+
 }

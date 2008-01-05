@@ -19,6 +19,7 @@ import net.sf.beep4j.Channel;
 import net.sf.beep4j.ChannelHandler;
 import net.sf.beep4j.CloseChannelRequest;
 import net.sf.beep4j.Message;
+import net.sf.beep4j.MessageBuilder;
 import net.sf.beep4j.Reply;
 import net.sf.beep4j.internal.util.Assert;
 
@@ -42,6 +43,10 @@ public abstract class ChannelHandlerAdapter implements ChannelHandler {
 	 */
 	protected Channel getChannel() {
 		return channel;
+	}
+	
+	protected MessageBuilder createMessageBuilder() {
+		return channel.createMessageBuilder();
 	}
 
 	/**

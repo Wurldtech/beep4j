@@ -16,6 +16,12 @@
 package net.sf.beep4j;
 
 /**
+ * Represents a mutable chain of filters. The first filter in the chain is closest
+ * to the network, the last filter in the chain is closest to the application.
+ * Depending on the filter method of the interface {@link ChannelFilter} the
+ * chain starts processing at the head (incoming requests) or the tail
+ * (outgoing requests).
+ * 
  * @author Simon Raess
  */
 public interface ChannelFilterChain {

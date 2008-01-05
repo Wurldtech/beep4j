@@ -35,7 +35,7 @@ public class EchoProfileHandler extends ChannelHandlerAdapter {
 
 	public void messageReceived(Message message, Reply handler) {
 		InputStream stream = message.getInputStream();
-		MessageBuilder builder = handler.createMessageBuilder();
+		MessageBuilder builder = createMessageBuilder();
 		OutputStream os = builder.getOutputStream();
 		writeTo(stream, os);
 		handler.sendRPY(builder.getMessage());

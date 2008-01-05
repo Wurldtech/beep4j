@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
 import net.sf.beep4j.Channel;
+import net.sf.beep4j.ChannelFilterChainBuilder;
 import net.sf.beep4j.ChannelHandler;
 import net.sf.beep4j.CloseChannelCallback;
 import net.sf.beep4j.Message;
@@ -30,6 +31,7 @@ import net.sf.beep4j.ProtocolException;
 import net.sf.beep4j.Reply;
 import net.sf.beep4j.ReplyHandler;
 import net.sf.beep4j.Session;
+import net.sf.beep4j.ext.ChannelFilterAdapter;
 import net.sf.beep4j.internal.management.CloseCallback;
 import net.sf.beep4j.internal.message.DefaultMessageBuilder;
 import net.sf.beep4j.internal.util.Assert;
@@ -43,6 +45,8 @@ class ChannelImpl implements Channel, InternalChannel {
 	private final String profile;
 	
 	private final int channelNumber;
+	
+	private final InternalChannelFilterChain filterChain;
 	
 	private final ReentrantLock sessionLock;
 	
@@ -77,11 +81,14 @@ class ChannelImpl implements Channel, InternalChannel {
 			InternalSession session, 
 			String profile, 
 			int channelNumber,
+			ChannelFilterChainBuilder filterChainBuilder,
 			ReentrantLock sessionLock) {
 		this.session = session;
 		this.profile = profile;
 		this.channelNumber = channelNumber;
 		this.sessionLock = sessionLock;
+		this.filterChain = new DefaultChannelFilterChain(new HeadFilter(), new TailFilter());
+		filterChainBuilder.buildFilterChain(filterChain);
 	}
 	
 	protected void setState(State state) {
@@ -180,7 +187,11 @@ class ChannelImpl implements Channel, InternalChannel {
 	public void channelOpened(ChannelHandler channelHandler) {
 		Assert.notNull("channelHandler", channelHandler);
 		this.channelHandler = channelHandler;
-		this.channelHandler.channelOpened(this);
+		this.filterChain.fireFireChannelOpened(this);
+	}
+	
+	private void doChannelOpened() {
+		channelHandler.channelOpened(this);
 	}
 
 	public void receiveMSG(final int messageNumber, final Message message) {
@@ -201,11 +212,19 @@ class ChannelImpl implements Channel, InternalChannel {
 		Reply reply = createReply(session, messageNumber);
 		state.receiveMSG(message, reply);
 	}
+	
+	private void doMessageReceived(Message message, Reply reply) {
+		channelHandler.messageReceived(message, reply);
+	}
 
 	public void receiveRPY(final int messageNumber, final Message message) {
 		Assert.holdsLock("session", sessionLock);
 		ReplyHandlerHolder holder = unregisterReplyHandlerHolder(messageNumber);
 		state.receiveRPY(holder, message);
+	}
+	
+	private void doReceivedRPY(ReplyHandler replyHandler, Message message) {
+		replyHandler.receivedRPY(message);
 	}
 	
 	public void receiveERR(final int messageNumber, final Message message) {
@@ -260,8 +279,41 @@ class ChannelImpl implements Channel, InternalChannel {
 		incrementOpenOutgoingReplies();
 		state.sendMessage(message, wrapReplyHandler(reply));
 	}
+	
+	private void lock() {
+		if (sessionLock != null) {
+			sessionLock.lock();
+		}
+	}
+	
+	private void unlock() {
+		if (sessionLock != null) {
+			sessionLock.unlock();
+		}
+	}
+	
+	private void doSendMessage(Message message, ReplyHandler replyHandler) {
+		lock();
+		try {
+			int messageNumber = messageNumberSequence.next();
+			registerReplyHandler(messageNumber, replyHandler);
+			session.sendMSG(channelNumber, messageNumber, message, replyHandler);
+		} finally {
+			unlock();
+		}
+	}
 
-	private ReplyHandler wrapReplyHandler(ReplyHandler replyHandler) {
+	/*
+	 * The passed in ReplyHandler is decorated by the the following 
+	 * decorators:
+	 * 
+	 * 1. ReplyHandlerWrapper:   bookkeeping
+	 * 2. UnlockingReplyHandler: unlock / lock session lock
+	 * 3. FilterReplyHandler:    passes request through filters
+	 * 4. target:                after the filters are processed, this method is called
+	 */
+	protected ReplyHandler wrapReplyHandler(ReplyHandler replyHandler) {
+		replyHandler = new FilterReplyHandler(filterChain, replyHandler);
 		replyHandler = new UnlockingReplyHandler(replyHandler, sessionLock);
 		replyHandler = new ReplyHandlerWrapper(replyHandler);
 		return replyHandler;
@@ -276,7 +328,7 @@ class ChannelImpl implements Channel, InternalChannel {
 		incrementOpenIncomingReplies();
 		reply = new ReplyWrapper(reply);
 		reply = new LockingReply(reply, sessionLock);
-		return reply;
+		return new FilterReply(filterChain, reply);
 	}
 	
 	public void channelCloseRequested(CloseCallback callback) {
@@ -286,8 +338,7 @@ class ChannelImpl implements Channel, InternalChannel {
 	// --> end of Channel methods <--
 	
 	protected void doClose() {
-		channelHandler.channelClosed();
-		setState(new Dead());
+		filterChain.fireFilterChannelClosed();
 	}
 	
 	protected synchronized void incrementOpenOutgoingReplies() {
@@ -318,6 +369,85 @@ class ChannelImpl implements Channel, InternalChannel {
 	
 	protected synchronized boolean isReadyToShutdown() {
 		return !hasOpenOutgoingReplies() && !hasOpenIncomingReplies();
+	}
+
+	/**
+	 * Filter used by the {@link DefaultChannelFilterChain} at the head of
+	 * the chain. Depending on the kind of operation either delegates
+	 * to the next filter (incoming operations on {@link ChannelHandler} and
+	 * {@link ReplyHandler}) or performs the requested operation (on outgoing
+	 * operations, {@link Channel} and {@link Reply}).
+	 */
+	private final class HeadFilter extends ChannelFilterAdapter {
+		@Override
+		public void filterSendMessage(NextFilter next, Message message, ReplyHandler replyHandler) {
+			doSendMessage(message, replyHandler);
+		}
+
+		@Override
+		public void filterSendRPY(NextFilter next, Message message) {
+			FilterChainTargetHolder.getReply().sendRPY(message);
+		}
+
+		@Override
+		public void filterSendERR(NextFilter next, Message message) {
+			FilterChainTargetHolder.getReply().sendERR(message);
+		}
+
+		@Override
+		public void filterSendANS(NextFilter next, Message message) {
+			FilterChainTargetHolder.getReply().sendANS(message);
+		}
+		
+		@Override
+		public void filterSendNUL(NextFilter next) {
+			FilterChainTargetHolder.getReply().sendNUL();
+		}
+	}
+
+	/**
+	 * Filter used by the {@link DefaultChannelFilterChain} at the tail of
+	 * the chain. Depending on the kind of operation either delegates
+	 * to the next filter (outgoing operations on {@link Channel} and
+	 * {@link Reply}) or performs the requested operation (on incoming
+	 * operations, {@link ChannelHandler} and {@link ReplyHandler}).
+	 */
+	private final class TailFilter extends ChannelFilterAdapter {
+		@Override
+		public void filterChannelOpened(NextFilter next, Channel channel) {
+			doChannelOpened();
+		}
+
+		@Override
+		public void filterMessageReceived(NextFilter next, Message message, Reply reply) {
+			doMessageReceived(message, reply);
+		}
+		
+		@Override
+		public void filterChannelClosed(NextFilter next) {
+			channelHandler.channelClosed();
+			setState(new Dead());
+		}
+
+		@Override
+		public void filterReceivedRPY(NextFilter next, ReplyHandler replyHandler, Message message) {
+			doReceivedRPY(replyHandler, message);
+		}
+		
+		@Override
+		public void filterReceivedERR(NextFilter next, Message message) {
+			FilterChainTargetHolder.getReplyHandler().receivedERR(message);
+		}
+		
+		@Override
+		public void filterReceivedANS(NextFilter next, Message message) {
+			FilterChainTargetHolder.getReplyHandler().receivedANS(message);
+		}
+		
+		@Override
+		public void filterReceivedNUL(NextFilter next) {
+			FilterChainTargetHolder.getReplyHandler().receivedNUL();
+		}
 	}
 
 	/*
@@ -366,10 +496,6 @@ class ChannelImpl implements Channel, InternalChannel {
 		private ReplyWrapper(Reply target) {
 			Assert.notNull("target", target);
 			this.target = target;
-		}
-		
-		public MessageBuilder createMessageBuilder() {
-			return target.createMessageBuilder();
 		}
 		
 		public void sendANS(Message message) {
@@ -428,13 +554,13 @@ class ChannelImpl implements Channel, InternalChannel {
 		
 		void receiveMSG(Message message, Reply reply);
 		
-		void receiveRPY(ReplyHandlerHolder holder, Message message);
+		void receiveRPY(ReplyHandler replyHandler, Message message);
 		
-		void receiveERR(ReplyHandlerHolder holder, Message message);
+		void receiveERR(ReplyHandler replyHandler, Message message);
 		
-		void receiveANS(ReplyHandlerHolder holder, Message message);
+		void receiveANS(ReplyHandler replyHandler, Message message);
 		
-		void receiveNUL(ReplyHandlerHolder holder);
+		void receiveNUL(ReplyHandler replyHandler);
 		
 	}
 	
@@ -460,19 +586,19 @@ class ChannelImpl implements Channel, InternalChannel {
 			throw new IllegalStateException();
 		}
 		
-		public void receiveANS(ReplyHandlerHolder holder, Message message) {
+		public void receiveANS(ReplyHandler replyHandler, Message message) {
 			throw new IllegalStateException();
 		}
 		
-		public void receiveNUL(ReplyHandlerHolder holder) {
+		public void receiveNUL(ReplyHandler replyHandler) {
 			throw new IllegalStateException();
 		}
 		
-		public void receiveERR(ReplyHandlerHolder holder, Message message) {
+		public void receiveERR(ReplyHandler replyHandler, Message message) {
 			throw new IllegalStateException();
 		}
 		
-		public void receiveRPY(ReplyHandlerHolder holder, Message message) {
+		public void receiveRPY(ReplyHandler replyHandler, Message message) {
 			throw new IllegalStateException();
 		}
 	}
@@ -480,23 +606,23 @@ class ChannelImpl implements Channel, InternalChannel {
 	private abstract class AbstractReceivingState extends AbstractState {
 		
 		@Override
-		public void receiveANS(ReplyHandlerHolder holder, Message message) {
-			holder.receivedANS(message);
+		public void receiveANS(ReplyHandler replyHandler, Message message) {
+			replyHandler.receivedANS(message);
 		}
 		
 		@Override
-		public void receiveNUL(ReplyHandlerHolder holder) {
-			holder.receivedNUL();
+		public void receiveNUL(ReplyHandler replyHandler) {
+			replyHandler.receivedNUL();
 		}
 		
 		@Override
-		public void receiveERR(ReplyHandlerHolder holder, Message message) {
-			holder.receivedERR(message);
+		public void receiveERR(ReplyHandler replyHandler, Message message) {
+			replyHandler.receivedERR(message);
 		}
 		
 		@Override
-		public void receiveRPY(ReplyHandlerHolder holder, Message message) {
-			holder.receivedRPY(message);
+		public void receiveRPY(ReplyHandler replyHandler, Message message) {
+			replyHandler.receivedRPY(message);
 		}
 	}
 	
@@ -504,14 +630,12 @@ class ChannelImpl implements Channel, InternalChannel {
 		
 		@Override
 		public void sendMessage(final Message message, final ReplyHandler replyHandler) {
-			int messageNumber = messageNumberSequence.next();
-			registerReplyHandler(messageNumber, replyHandler);
-			session.sendMSG(channelNumber, messageNumber, message, replyHandler);
+			filterChain.fireFilterSendMessage(message, replyHandler);
 		}
 		
 		@Override
 		public void receiveMSG(Message message, Reply reply) {
-			channelHandler.messageReceived(message, reply);
+			filterChain.fireFilterMessageReceived(message, reply);
 		}
 		
 		@Override
@@ -536,13 +660,13 @@ class ChannelImpl implements Channel, InternalChannel {
 		
 		@Override
 		public void receiveMSG(Message message, Reply reply) {
-			channelHandler.messageReceived(message, reply);
+			filterChain.fireFilterMessageReceived(message, reply);
 		}
 		
 		@Override
 		public void checkCondition() {
 			if (isReadyToShutdown()) {
-				session.requestChannelClose(channelNumber, new CloseCallback() {
+				final CloseCallback closeCallback = new CloseCallback() {
 					public void closeDeclined(int code, String message) {
 						callback.closeDeclined(code, message);
 						setState(new Alive());
@@ -551,7 +675,8 @@ class ChannelImpl implements Channel, InternalChannel {
 						callback.closeAccepted();
 						doClose();
 					}
-				});
+				};
+				session.requestChannelClose(channelNumber, closeCallback);
 			}
 		}
 		

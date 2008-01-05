@@ -34,14 +34,6 @@ package net.sf.beep4j;
 public interface Reply {
 	
 	/**
-	 * Creates a new MessageBuilder object that can be used to create
-	 * one new message.
-	 * 
-	 * @return a new MessageBuilder object
-	 */
-	MessageBuilder createMessageBuilder();
-	
-	/**
 	 * Sends a reply of type ANS. This method can be called zero or more
 	 * times. To complete the response the method {@link #sendNUL()} has
 	 * to be invoked.

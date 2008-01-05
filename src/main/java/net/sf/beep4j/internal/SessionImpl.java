@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
+import net.sf.beep4j.ChannelFilterChainBuilder;
 import net.sf.beep4j.ChannelHandler;
 import net.sf.beep4j.ChannelHandlerFactory;
 import net.sf.beep4j.Message;
@@ -61,6 +62,8 @@ import org.slf4j.LoggerFactory;
 public class SessionImpl 
 		implements MessageHandler, SessionManager, InternalSession, TransportHandler {
 	
+	private static final int MANAGEMENT_CHANNEL = 0;
+
 	private final Logger LOG = LoggerFactory.getLogger(SessionImpl.class);
 	
 	private final boolean initiator;
@@ -76,6 +79,8 @@ public class SessionImpl
 	private final Sequence<Integer> channelNumberSequence;
 	
 	private final List<SessionListener> listeners = Collections.synchronizedList(new ArrayList<SessionListener>());
+	
+	private ChannelFilterChainBuilder filterChainBuilder = new NullChannelFilterChainBuilder();
 	
 	private final ReentrantLock sessionLock = new ReentrantLock();
 	
@@ -137,14 +142,14 @@ public class SessionImpl
 	}
 
 	protected void initChannelManagementProfile() {
-		InternalChannel channel = new ChannelImpl(this, null, 0, null);
+		InternalChannel channel = new ChannelImpl(this, null, MANAGEMENT_CHANNEL, filterChainBuilder, null);
 		ChannelHandler channelHandler = channelManagementProfile.createChannelHandler(this, channel);
-		registerChannel(0, channel);
+		registerChannel(MANAGEMENT_CHANNEL, channel);
 		channel.channelOpened(channelHandler);
 	}
 		
 	protected InternalChannel createChannel(InternalSession session, String profileUri, int channelNumber) {
-		return new ChannelImpl(session, profileUri, channelNumber, sessionLock);
+		return new ChannelImpl(session, profileUri, channelNumber, filterChainBuilder, sessionLock);
 	}
 	
 	private ChannelHandler initChannel(InternalChannel channel, ChannelHandler handler) {
@@ -669,11 +674,11 @@ public class SessionImpl
 			sessionHandler.connectionEstablished(request);
 			
 			if (request.isCancelled()) {
-				beepStream.sendERR(0, 0, channelManagementProfile.createSessionStartDeclined(request.getReplyCode(), request.getMessage()));
+				beepStream.sendERR(MANAGEMENT_CHANNEL, 0, channelManagementProfile.createSessionStartDeclined(request.getReplyCode(), request.getMessage()));
 				setCurrentState(deadState);
 				beepStream.closeTransport();
 			} else {
-				beepStream.sendRPY(0, 0, channelManagementProfile.createGreeting(request.getProfiles()));
+				beepStream.sendRPY(MANAGEMENT_CHANNEL, 0, channelManagementProfile.createGreeting(request.getProfiles()));
 			}
 		}
 		
@@ -713,7 +718,7 @@ public class SessionImpl
 		}
 
 		private void validateMessage(int channelNumber, int messageNumber) {
-			if (channelNumber != 0 || messageNumber != 0) {
+			if (channelNumber != MANAGEMENT_CHANNEL || messageNumber != 0) {
 				throw new ProtocolException("first message in session must be sent on "
 						+ "channel 0 with message number 0: was channel " + channelNumber
 						+ ", message=" + messageNumber);

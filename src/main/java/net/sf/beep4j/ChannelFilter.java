@@ -24,70 +24,73 @@ package net.sf.beep4j;
  */
 public interface ChannelFilter {
 	
+	// --> start of Channel filtering methods <--
+	
 	/**
 	 * Filters {@link Channel#sendMessage(Message, ReplyHandler)}.
 	 * 
 	 * @param next the next filter in the chain
 	 * @param message the message that is to be sent
-	 * @param listener the listener that processes the reply for this message
+	 * @param replyHandler the listener that processes the reply for this message
 	 */
-	void filterSendMessage(NextFilter next, Object message, ReplyHandler listener);
+	void filterSendMessage(NextFilter next, Message message, ReplyHandler replyHandler);
 	
-	/**
-	 * Filters {@link Channel#close(CloseChannelCallback)}.
-	 * 
-	 * @param next the next filter in the chain
-	 */
-	void filterClose(NextFilter next);
+	// --> start of ChannelHandler filtering methods <--
 	
-	/**
-	 * Filters {@link ChannelHandler#channelOpened(Channel)}.
-	 * 
-	 * @param next the next filter in the chain
-	 * @param channel the channel that was opened
-	 */
 	void filterChannelOpened(NextFilter next, Channel channel);
 	
-	/**
-	 * Filters {@link ChannelHandler#messageReceived(Message, Reply)}.
-	 * 
-	 * @param next the next filter in the chain
-	 * @param message the message that is received
-	 * @param responseHandler to be used to create the response for the received message
-	 */
-	void filterMessageReceived(NextFilter next, Message message, Reply responseHandler);
+	void filterMessageReceived(NextFilter next, Message message, Reply reply);
 	
-	/**
-	 * Filters {@link ChannelHandler#channelCloseRequested(CloseChannelRequest)}.
-	 * 
-	 * @param next the next filter in the chain
-	 * @param request the close channel request
-	 */
-	void filterChannelCloseRequested(NextFilter next, CloseChannelRequest request);
-	
-	/**
-	 * Filters {@link ChannelHandler#channelClosed()}.
-	 * 
-	 * @param next the next filter in the chain
-	 */
 	void filterChannelClosed(NextFilter next);
+	
+	// --> start of ReplyHandler filtering methods <--
+	
+	void filterReceivedRPY(NextFilter next, ReplyHandler replyHandler, Message message);
+	
+	void filterReceivedERR(NextFilter next, Message message);
+	
+	void filterReceivedANS(NextFilter next, Message message);
+	
+	void filterReceivedNUL(NextFilter next);
+
+	// --> start of Reply filtering methods <--
+	
+	void filterSendRPY(NextFilter next, Message message);
+	
+	void filterSendERR(NextFilter next, Message message);
+	
+	void filterSendANS(NextFilter next, Message message);
+	
+	void filterSendNUL(NextFilter next);
 	
 	/**
 	 * Interface of the next filter in the chain.
 	 */
 	interface NextFilter { 
 		
-		void filterSendMessage(Message message, ReplyHandler listener);
-		
-		void filterClose(CloseChannelCallback callback);
+		void filterSendMessage(Message message, ReplyHandler replyHandler);
 		
 		void filterChannelOpened(Channel channel);
 		
 		void filterMessageReceived(Message message, Reply reply);
 		
-		void filterChannelCloseReqested(CloseChannelRequest request);
-		
 		void filterChannelClosed();
+		
+		void filterReceivedRPY(ReplyHandler replyHandler, Message message);
+		
+		void filterReceivedERR(Message message);
+		
+		void filterReceivedANS(Message message);
+		
+		void filterReceivedNUL();
+		
+		void filterSendRPY(Message message);
+		
+		void filterSendERR(Message message);
+		
+		void filterSendANS(Message message);
+		
+		void filterSendNUL();
 		
 	}
 	
