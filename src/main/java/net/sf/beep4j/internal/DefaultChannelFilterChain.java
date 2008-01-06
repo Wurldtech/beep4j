@@ -2,6 +2,8 @@ package net.sf.beep4j.internal;
 
 import net.sf.beep4j.Channel;
 import net.sf.beep4j.ChannelFilter;
+import net.sf.beep4j.CloseChannelCallback;
+import net.sf.beep4j.CloseChannelRequest;
 import net.sf.beep4j.Message;
 import net.sf.beep4j.Reply;
 import net.sf.beep4j.ReplyHandler;
@@ -29,13 +31,39 @@ public class DefaultChannelFilterChain implements InternalChannelFilterChain {
 	}
 	
 	public void addAfter(Class<? extends ChannelFilter> after, ChannelFilter filter) {
-		// TODO Auto-generated method stub
-
+		Entry newEntry = new Entry(filter);
+		
+		Entry entry = head;
+		while (entry != tail) {
+			if (after.isInstance(entry.getFilter())) {
+				break;
+			}
+			entry = entry.next;
+		}
+		
+		if (entry == null) {
+			entry = tail.previous;
+		}
+		
+		insertBetween(entry, entry.next, newEntry);
 	}
 
 	public void addBefore(Class<? extends ChannelFilter> before, ChannelFilter filter) {
-		// TODO Auto-generated method stub
-
+		Entry newEntry = new Entry(filter);
+		
+		Entry entry = tail;
+		while (entry != head) {
+			if (before.isInstance(entry.getFilter())) {
+				break;
+			}
+			entry = entry.previous;
+		}
+		
+		if (entry == null) {
+			entry = head.next;
+		}
+		
+		insertBetween(entry, entry.next, newEntry);
 	}
 
 	public void addFirst(ChannelFilter filter) {
@@ -56,7 +84,15 @@ public class DefaultChannelFilterChain implements InternalChannelFilterChain {
 		entry.getFilter().filterSendMessage(entry.getNextFilter(), message, replyHandler);
 	}
 	
-	public void fireFireChannelOpened(Channel channel) {
+	public void fireFilterClose(CloseChannelCallback callback) {
+		callPreviousFilterClose(tail, callback);
+	}
+	
+	private static void callPreviousFilterClose(Entry entry, CloseChannelCallback callback) {
+		entry.getFilter().filterClose(entry.getNextFilter(), callback);
+	}
+	
+	public void fireFilterChannelOpened(Channel channel) {
 		callNextFilterChannelOpened(head, channel);
 	}
 	
@@ -72,6 +108,14 @@ public class DefaultChannelFilterChain implements InternalChannelFilterChain {
 		entry.getFilter().filterMessageReceived(entry.getNextFilter(), message, reply);
 	}
 	
+	public void fireFilterChannelCloseRequested(CloseChannelRequest request) {
+		callNextFilterChannelCloseRequested(head, request);
+	}
+	
+	private static void callNextFilterChannelCloseRequested(Entry entry, CloseChannelRequest request) {
+		entry.getFilter().filterChannelCloseRequested(entry.getNextFilter(), request);
+	}
+	
 	public void fireFilterChannelClosed() {
 		callNextFilterChannelClosed(head);
 	}
@@ -80,12 +124,12 @@ public class DefaultChannelFilterChain implements InternalChannelFilterChain {
 		entry.getFilter().filterChannelClosed(entry.getNextFilter());
 	}
 	
-	public void fireFilterReceivedRPY(ReplyHandler replyHandler, Message message) {
-		callNextFilterReceivedRPY(head, replyHandler, message);
+	public void fireFilterReceivedRPY(Message message) {
+		callNextFilterReceivedRPY(head, message);
 	}
 	
-	private static void callNextFilterReceivedRPY(Entry entry, ReplyHandler replyHandler, Message message) {
-		entry.getFilter().filterReceivedRPY(entry.getNextFilter(), replyHandler, message);
+	private static void callNextFilterReceivedRPY(Entry entry, Message message) {
+		entry.getFilter().filterReceivedRPY(entry.getNextFilter(), message);
 	}
 	
 	public void fireFilterReceivedERR(Message message) {
@@ -156,17 +200,23 @@ public class DefaultChannelFilterChain implements InternalChannelFilterChain {
 				public void filterSendMessage(Message message, ReplyHandler replyHandler) {
 					callPreviousFilterSendMessage(previous, message, replyHandler);
 				}
+				public void filterClose(CloseChannelCallback callback) {
+					callPreviousFilterClose(previous, callback);
+				}
 				public void filterChannelOpened(Channel channel) {
 					callNextFilterChannelOpened(next, channel);
 				}
 				public void filterMessageReceived(Message message, Reply reply) {
 					callNextFilterMessageReceived(next, message, reply);
 				}
+				public void filterChannelCloseRequested(CloseChannelRequest request) {
+					callNextFilterChannelCloseRequested(next, request);
+				}
 				public void filterChannelClosed() {
 					callNextFilterChannelClosed(next);
 				}
-				public void filterReceivedRPY(ReplyHandler replyHandler, Message message) {
-					callNextFilterReceivedRPY(next, replyHandler, message);
+				public void filterReceivedRPY(Message message) {
+					callNextFilterReceivedRPY(next, message);
 				}
 				public void filterReceivedERR(Message message) {
 					callNextFilterReceivedERR(next, message);

@@ -35,17 +35,21 @@ public interface ChannelFilter {
 	 */
 	void filterSendMessage(NextFilter next, Message message, ReplyHandler replyHandler);
 	
+	void filterClose(NextFilter next, CloseChannelCallback callback);
+	
 	// --> start of ChannelHandler filtering methods <--
 	
 	void filterChannelOpened(NextFilter next, Channel channel);
 	
 	void filterMessageReceived(NextFilter next, Message message, Reply reply);
 	
+	void filterChannelCloseRequested(NextFilter next, CloseChannelRequest request);
+	
 	void filterChannelClosed(NextFilter next);
 	
 	// --> start of ReplyHandler filtering methods <--
 	
-	void filterReceivedRPY(NextFilter next, ReplyHandler replyHandler, Message message);
+	void filterReceivedRPY(NextFilter next, Message message);
 	
 	void filterReceivedERR(NextFilter next, Message message);
 	
@@ -70,13 +74,17 @@ public interface ChannelFilter {
 		
 		void filterSendMessage(Message message, ReplyHandler replyHandler);
 		
+		void filterClose(CloseChannelCallback callback);
+		
 		void filterChannelOpened(Channel channel);
 		
 		void filterMessageReceived(Message message, Reply reply);
 		
+		void filterChannelCloseRequested(CloseChannelRequest request);
+		
 		void filterChannelClosed();
 		
-		void filterReceivedRPY(ReplyHandler replyHandler, Message message);
+		void filterReceivedRPY(Message message);
 		
 		void filterReceivedERR(Message message);
 		

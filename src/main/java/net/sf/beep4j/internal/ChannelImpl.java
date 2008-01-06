@@ -25,6 +25,7 @@ import net.sf.beep4j.Channel;
 import net.sf.beep4j.ChannelFilterChainBuilder;
 import net.sf.beep4j.ChannelHandler;
 import net.sf.beep4j.CloseChannelCallback;
+import net.sf.beep4j.CloseChannelRequest;
 import net.sf.beep4j.Message;
 import net.sf.beep4j.MessageBuilder;
 import net.sf.beep4j.ProtocolException;
@@ -185,15 +186,15 @@ class ChannelImpl implements Channel, InternalChannel {
 	// --> start of InternalChannel methods <--
 	
 	public void channelOpened(ChannelHandler channelHandler) {
-		Assert.notNull("channelHandler", channelHandler);
-		this.channelHandler = channelHandler;
-		this.filterChain.fireFireChannelOpened(this);
-	}
-	
-	private void doChannelOpened() {
-		channelHandler.channelOpened(this);
+		Assert.notNull("channelHandler", wrappChannelHandler(channelHandler));
+		this.channelHandler = wrappChannelHandler(channelHandler);
+		this.channelHandler.channelOpened(this);
 	}
 
+	private ChannelHandler wrappChannelHandler(ChannelHandler channelHandler) {
+		return new FilterChannelHandler(filterChain, channelHandler);
+	}
+	
 	public void receiveMSG(final int messageNumber, final Message message) {
 		Assert.holdsLock("session", sessionLock);
 		
@@ -213,18 +214,10 @@ class ChannelImpl implements Channel, InternalChannel {
 		state.receiveMSG(message, reply);
 	}
 	
-	private void doMessageReceived(Message message, Reply reply) {
-		channelHandler.messageReceived(message, reply);
-	}
-
 	public void receiveRPY(final int messageNumber, final Message message) {
 		Assert.holdsLock("session", sessionLock);
 		ReplyHandlerHolder holder = unregisterReplyHandlerHolder(messageNumber);
 		state.receiveRPY(holder, message);
-	}
-	
-	private void doReceivedRPY(ReplyHandler replyHandler, Message message) {
-		replyHandler.receivedRPY(message);
 	}
 	
 	public void receiveERR(final int messageNumber, final Message message) {
@@ -335,11 +328,20 @@ class ChannelImpl implements Channel, InternalChannel {
 		state.closeRequested(callback);
 	}
 	
-	// --> end of Channel methods <--
-	
-	protected void doClose() {
-		filterChain.fireFilterChannelClosed();
+	private void doChannelCloseRequested(CloseChannelRequest r) {
+		DefaultCloseChannelRequest request = (DefaultCloseChannelRequest) r;
+		CloseCallback callback = FilterChainTargetHolder.getCloseCallback();
+		FilterChainTargetHolder.getChannelHandler().channelCloseRequested(request);
+		if (request.isAccepted()) {
+			channelHandler.channelClosed();
+			callback.closeAccepted();
+		} else {
+			callback.closeDeclined(550, "still working");
+			setState(new Alive());
+		}
 	}
+	
+	// --> end of Channel methods <--
 	
 	protected synchronized void incrementOpenOutgoingReplies() {
 		openOutgoingReplies++;
@@ -383,6 +385,11 @@ class ChannelImpl implements Channel, InternalChannel {
 		public void filterSendMessage(NextFilter next, Message message, ReplyHandler replyHandler) {
 			doSendMessage(message, replyHandler);
 		}
+		
+		@Override
+		public void filterClose(NextFilter next, CloseChannelCallback callback) {
+			// TODO: perform close
+		}
 
 		@Override
 		public void filterSendRPY(NextFilter next, Message message) {
@@ -415,23 +422,28 @@ class ChannelImpl implements Channel, InternalChannel {
 	private final class TailFilter extends ChannelFilterAdapter {
 		@Override
 		public void filterChannelOpened(NextFilter next, Channel channel) {
-			doChannelOpened();
+			FilterChainTargetHolder.getChannelHandler().channelOpened(ChannelImpl.this);
 		}
 
 		@Override
 		public void filterMessageReceived(NextFilter next, Message message, Reply reply) {
-			doMessageReceived(message, reply);
+			FilterChainTargetHolder.getChannelHandler().messageReceived(message, reply);
+		}
+		
+		@Override
+		public void filterChannelCloseRequested(NextFilter next, CloseChannelRequest request) {
+			doChannelCloseRequested(request);
 		}
 		
 		@Override
 		public void filterChannelClosed(NextFilter next) {
-			channelHandler.channelClosed();
+			FilterChainTargetHolder.getChannelHandler().channelClosed();
 			setState(new Dead());
 		}
 
 		@Override
-		public void filterReceivedRPY(NextFilter next, ReplyHandler replyHandler, Message message) {
-			doReceivedRPY(replyHandler, message);
+		public void filterReceivedRPY(NextFilter next, Message message) {
+			FilterChainTargetHolder.getReplyHandler().receivedRPY(message);
 		}
 		
 		@Override
@@ -635,7 +647,7 @@ class ChannelImpl implements Channel, InternalChannel {
 		
 		@Override
 		public void receiveMSG(Message message, Reply reply) {
-			filterChain.fireFilterMessageReceived(message, reply);
+			channelHandler.messageReceived(message, reply);
 		}
 		
 		@Override
@@ -660,7 +672,7 @@ class ChannelImpl implements Channel, InternalChannel {
 		
 		@Override
 		public void receiveMSG(Message message, Reply reply) {
-			filterChain.fireFilterMessageReceived(message, reply);
+			channelHandler.messageReceived(message, reply);
 		}
 		
 		@Override
@@ -673,7 +685,7 @@ class ChannelImpl implements Channel, InternalChannel {
 					}
 					public void closeAccepted() {
 						callback.closeAccepted();
-						doClose();
+						channelHandler.channelClosed();
 					}
 				};
 				session.requestChannelClose(channelNumber, closeCallback);
@@ -690,7 +702,7 @@ class ChannelImpl implements Channel, InternalChannel {
 		@Override
 		public void closeRequested(CloseCallback closeCallback) {
 			callback.closeAccepted();
-			doClose();
+			channelHandler.channelClosed();
 			closeCallback.closeAccepted();
 		}
 		
@@ -714,13 +726,11 @@ class ChannelImpl implements Channel, InternalChannel {
 		public void checkCondition() {
 			if (isReadyToShutdown()) {
 				DefaultCloseChannelRequest request = new DefaultCloseChannelRequest();
-				channelHandler.channelCloseRequested(request);
-				if (request.isAccepted()) {
-					doClose();
-					this.callback.closeAccepted();
-				} else {
-					this.callback.closeDeclined(550, "still working");
-					setState(new Alive());
+				FilterChainTargetHolder.setCloseCallback(callback);
+				try {
+					channelHandler.channelCloseRequested(request);
+				} finally {
+					FilterChainTargetHolder.setCloseCallback(null);
 				}
 			}
 		}

@@ -17,6 +17,8 @@ package net.sf.beep4j.ext;
 
 import net.sf.beep4j.Channel;
 import net.sf.beep4j.ChannelFilter;
+import net.sf.beep4j.CloseChannelCallback;
+import net.sf.beep4j.CloseChannelRequest;
 import net.sf.beep4j.Message;
 import net.sf.beep4j.Reply;
 import net.sf.beep4j.ReplyHandler;
@@ -29,25 +31,39 @@ import net.sf.beep4j.ReplyHandler;
  * @author Simon Raess
  */
 public class ChannelFilterAdapter implements ChannelFilter {
-
-	public void filterChannelOpened(NextFilter next, Channel channel) {
-		next.filterChannelOpened(channel);
-	}
-
+	
+	// --> filtering Channel methods <--
+	
 	public void filterSendMessage(NextFilter next, Message message, ReplyHandler replyHandler) {
 		next.filterSendMessage(message, replyHandler);
+	}
+	
+	public void filterClose(NextFilter next, CloseChannelCallback callback) {
+		next.filterClose(callback);
+	}
+	
+	// --> filtering ChannelHandler methods <--
+	
+	public void filterChannelOpened(NextFilter next, Channel channel) {
+		next.filterChannelOpened(channel);
 	}
 	
 	public void filterMessageReceived(NextFilter next, Message message, Reply reply) {
 		next.filterMessageReceived(message, reply);
 	}
 	
+	public void filterChannelCloseRequested(NextFilter next, CloseChannelRequest request) {
+		next.filterChannelCloseRequested(request);
+	}
+	
 	public void filterChannelClosed(NextFilter next) {
 		next.filterChannelClosed();
 	}
 	
-	public void filterReceivedRPY(NextFilter next, ReplyHandler replyHandler, Message message) {
-		next.filterReceivedRPY(replyHandler, message);
+	// --> filtering ReplyHandler methods <--
+	
+	public void filterReceivedRPY(NextFilter next, Message message) {
+		next.filterReceivedRPY(message);
 	}
 	
 	public void filterReceivedERR(NextFilter next, Message message) {
@@ -61,6 +77,8 @@ public class ChannelFilterAdapter implements ChannelFilter {
 	public void filterReceivedNUL(NextFilter next) {
 		next.filterReceivedNUL();
 	}
+	
+	// --> filtering Reply methods <--
 	
 	public void filterSendRPY(NextFilter next, Message message) {
 		next.filterSendRPY(message);

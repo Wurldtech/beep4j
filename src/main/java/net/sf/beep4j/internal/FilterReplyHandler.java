@@ -40,7 +40,12 @@ final class FilterReplyHandler implements ReplyHandler {
 	}
 
 	public void receivedRPY(Message message) {
-		filterChain.fireFilterReceivedRPY(target, message);
+		FilterChainTargetHolder.setReplyHandler(target);
+		try {
+			filterChain.fireFilterReceivedRPY(message);
+		} finally {
+			FilterChainTargetHolder.setReplyHandler(null);
+		}
 	}
 	
 	public void receivedERR(Message message) {
