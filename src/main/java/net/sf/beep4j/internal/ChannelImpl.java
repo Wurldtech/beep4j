@@ -104,6 +104,7 @@ class ChannelImpl implements Channel, InternalChannel {
 	}
 	
 	protected Reply createReply(InternalSession session, int messageNumber) {
+		incrementOpenIncomingReplies();
 		Reply reply = wrapReply(new DefaultReply(session, channelNumber, messageNumber));
 		registerReply(messageNumber, reply);
 		return reply;
@@ -300,15 +301,15 @@ class ChannelImpl implements Channel, InternalChannel {
 	 * The passed in ReplyHandler is decorated by the the following 
 	 * decorators:
 	 * 
-	 * 1. ReplyHandlerWrapper:   bookkeeping
-	 * 2. UnlockingReplyHandler: unlock / lock session lock
-	 * 3. FilterReplyHandler:    passes request through filters
+	 * 1. UnlockingReplyHandler: unlock / lock session lock
+	 * 2. FilterReplyHandler:    passes request through filters
+	 * 3. ReplyHandlerWrapper:   bookkeeping (notify about completed replies)
 	 * 4. target:                after the filters are processed, this method is called
 	 */
 	protected ReplyHandler wrapReplyHandler(ReplyHandler replyHandler) {
+		replyHandler = new ReplyHandlerWrapper(replyHandler);
 		replyHandler = new FilterReplyHandler(filterChain, replyHandler);
 		replyHandler = new UnlockingReplyHandler(replyHandler, sessionLock);
-		replyHandler = new ReplyHandlerWrapper(replyHandler);
 		return replyHandler;
 	}
 	
@@ -318,7 +319,6 @@ class ChannelImpl implements Channel, InternalChannel {
 	}
 
 	protected Reply wrapReply(Reply reply) {
-		incrementOpenIncomingReplies();
 		reply = new ReplyWrapper(reply);
 		reply = new LockingReply(reply, sessionLock);
 		return new FilterReply(filterChain, reply);
@@ -482,18 +482,27 @@ class ChannelImpl implements Channel, InternalChannel {
 		}
 		
 		public void receivedNUL() {
-			outgoingReplyCompleted();
-			target.receivedNUL();
+			try {
+				target.receivedNUL();
+			} finally {
+				outgoingReplyCompleted();
+			}
 		}
 		
 		public void receivedERR(Message message) {
-			outgoingReplyCompleted();
-			target.receivedERR(message);
+			try {
+				target.receivedERR(message);
+			} finally {
+				outgoingReplyCompleted();
+			}
 		}
 		
 		public void receivedRPY(Message message) {
-			outgoingReplyCompleted();
-			target.receivedRPY(message);
+			try {
+				target.receivedRPY(message);
+			} finally {
+				outgoingReplyCompleted();
+			}
 		}
 	}
 	
