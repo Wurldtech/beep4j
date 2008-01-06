@@ -15,6 +15,12 @@
  */
 package net.sf.beep4j;
 
+/**
+ * ReplyHandler that simply does nothing with the received response. You can
+ * use this class if you are not interested in the response.
+ * 
+ * @author Simon Raess
+ */
 public class NullReplyHandler implements ReplyHandler {
 
 	public void receivedANS(Message message) {
