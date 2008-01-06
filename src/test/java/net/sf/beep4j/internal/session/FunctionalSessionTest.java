@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal;
+package net.sf.beep4j.internal.session;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -37,6 +37,7 @@ import net.sf.beep4j.StartSessionRequest;
 import net.sf.beep4j.internal.management.ManagementMessageBuilder;
 import net.sf.beep4j.internal.management.SaxMessageBuilder;
 import net.sf.beep4j.internal.message.DefaultMessageBuilder;
+import net.sf.beep4j.internal.session.SessionImpl;
 import net.sf.beep4j.internal.stream.BeepStream;
 import net.sf.beep4j.internal.stream.MessageHandler;
 

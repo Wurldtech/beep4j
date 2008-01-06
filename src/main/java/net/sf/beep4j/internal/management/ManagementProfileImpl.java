@@ -22,10 +22,10 @@ import net.sf.beep4j.ProfileInfo;
 import net.sf.beep4j.ProtocolException;
 import net.sf.beep4j.Reply;
 import net.sf.beep4j.ReplyHandler;
-import net.sf.beep4j.internal.InternalChannel;
 import net.sf.beep4j.internal.SessionManager;
 import net.sf.beep4j.internal.StartChannelResponse;
 import net.sf.beep4j.internal.message.DefaultMessageBuilder;
+import net.sf.beep4j.internal.session.InternalChannel;
 
 /**
  * Implementation of ChannelManagementProfile interface.

@@ -1,4 +1,4 @@
-package net.sf.beep4j.internal;
+package net.sf.beep4j.internal.session;
 
 import net.sf.beep4j.Channel;
 import net.sf.beep4j.ChannelFilterChain;

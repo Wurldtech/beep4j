@@ -8,6 +8,7 @@ import net.sf.beep4j.Message;
 import net.sf.beep4j.Reply;
 import net.sf.beep4j.ReplyHandler;
 import net.sf.beep4j.ChannelFilter.NextFilter;
+import net.sf.beep4j.internal.session.InternalChannelFilterChain;
 
 public class DefaultChannelFilterChain implements InternalChannelFilterChain {
 	

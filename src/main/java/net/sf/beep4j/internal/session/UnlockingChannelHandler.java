@@ -1,5 +1,5 @@
 /*
- *  Copyright 2006 Simon Raess
+ *  Copyright 2007 Simon Raess
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -13,25 +13,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-package net.sf.beep4j.internal;
+package net.sf.beep4j.internal.session;
 
 import java.util.concurrent.locks.Lock;
 
+import net.sf.beep4j.Channel;
 import net.sf.beep4j.ChannelHandler;
-import net.sf.beep4j.Session;
-import net.sf.beep4j.SessionHandler;
-import net.sf.beep4j.StartChannelRequest;
-import net.sf.beep4j.StartSessionRequest;
+import net.sf.beep4j.CloseChannelRequest;
+import net.sf.beep4j.Message;
+import net.sf.beep4j.Reply;
 import net.sf.beep4j.internal.util.Assert;
 
-class UnlockingSessionHandler implements SessionHandler {
+/**
+ * {@link ChannelHandler} implementation that unlocks the given lock
+ * before calling a target ChannelHandler. Further it guarantees that
+ * the lock is again locked as soon as the target ChannelHandler
+ * returns.
+ * 
+ * @author Simon Raess
+ */
+final class UnlockingChannelHandler implements ChannelHandler {
 	
-	private final SessionHandler target;
+	private final ChannelHandler target;
 	
 	private final Lock lock;
 	
-	UnlockingSessionHandler(SessionHandler target, Lock lock) {
+	UnlockingChannelHandler(ChannelHandler target, Lock lock) {
 		Assert.notNull("target", target);
 		Assert.notNull("lock", lock);
 		this.target = target;
@@ -46,55 +53,37 @@ class UnlockingSessionHandler implements SessionHandler {
 		lock.unlock();
 	}
 	
-	public void connectionEstablished(StartSessionRequest s) {
+	public void channelOpened(Channel c) {
 		unlock();
 		try {
-			target.connectionEstablished(s);
+			target.channelOpened(c);
 		} finally {
 			lock();
 		}
 	}
 	
-	public void sessionOpened(Session s) {
+	public void messageReceived(Message message, Reply reply) {
 		unlock();
 		try {
-			target.sessionOpened(s);
+			target.messageReceived(message, reply);
 		} finally {
 			lock();
 		}
 	}
 	
-	public void sessionStartDeclined(int code, String message) {
+	public void channelCloseRequested(CloseChannelRequest request) {
 		unlock();
 		try {
-			target.sessionStartDeclined(code, message);
+			target.channelCloseRequested(request);
 		} finally {
 			lock();
 		}
 	}
 	
-	public void channelStartFailed(String profileUri, ChannelHandler channelHandler, int code, String message) {
+	public void channelClosed() {
 		unlock();
 		try {
-			target.channelStartFailed(profileUri, channelHandler, code, message);
-		} finally {
-			lock();
-		}
-	}
-	
-	public void channelStartRequested(StartChannelRequest request) {
-		unlock();
-		try {
-			target.channelStartRequested(request);
-		} finally {
-			lock();
-		}
-	}
-	
-	public void sessionClosed() {
-		unlock();
-		try {
-			target.sessionClosed();
+			target.channelClosed();
 		} finally {
 			lock();
 		}

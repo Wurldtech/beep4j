@@ -19,8 +19,8 @@ import net.sf.beep4j.ChannelHandler;
 import net.sf.beep4j.Message;
 import net.sf.beep4j.ProfileInfo;
 import net.sf.beep4j.Reply;
-import net.sf.beep4j.internal.InternalChannel;
 import net.sf.beep4j.internal.SessionManager;
+import net.sf.beep4j.internal.session.InternalChannel;
 
 /**
  * Interface of the channel management profile, which is used on channel 0

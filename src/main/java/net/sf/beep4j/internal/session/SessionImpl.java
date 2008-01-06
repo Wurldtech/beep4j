@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal;
+package net.sf.beep4j.internal.session;
 
 import java.net.SocketAddress;
 import java.util.ArrayList;
@@ -32,6 +32,11 @@ import net.sf.beep4j.ProfileInfo;
 import net.sf.beep4j.ProtocolException;
 import net.sf.beep4j.ReplyHandler;
 import net.sf.beep4j.SessionHandler;
+import net.sf.beep4j.internal.NullChannelFilterChainBuilder;
+import net.sf.beep4j.internal.SessionListener;
+import net.sf.beep4j.internal.SessionManager;
+import net.sf.beep4j.internal.StartChannelResponse;
+import net.sf.beep4j.internal.TransportHandler;
 import net.sf.beep4j.internal.management.BEEPError;
 import net.sf.beep4j.internal.management.CloseCallback;
 import net.sf.beep4j.internal.management.Greeting;

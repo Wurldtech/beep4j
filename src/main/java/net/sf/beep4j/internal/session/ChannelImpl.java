@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal;
+package net.sf.beep4j.internal.session;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -33,6 +33,8 @@ import net.sf.beep4j.Reply;
 import net.sf.beep4j.ReplyHandler;
 import net.sf.beep4j.Session;
 import net.sf.beep4j.ext.ChannelFilterAdapter;
+import net.sf.beep4j.internal.DefaultChannelFilterChain;
+import net.sf.beep4j.internal.FilterChainTargetHolder;
 import net.sf.beep4j.internal.management.CloseCallback;
 import net.sf.beep4j.internal.message.DefaultMessageBuilder;
 import net.sf.beep4j.internal.util.Assert;

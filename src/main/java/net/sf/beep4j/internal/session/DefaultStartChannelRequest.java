@@ -13,11 +13,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal;
+package net.sf.beep4j.internal.session;
 
 import net.sf.beep4j.ChannelHandler;
 import net.sf.beep4j.ProfileInfo;
 import net.sf.beep4j.StartChannelRequest;
+import net.sf.beep4j.internal.StartChannelResponse;
 import net.sf.beep4j.internal.util.Assert;
 
 final class DefaultStartChannelRequest implements StartChannelRequest {

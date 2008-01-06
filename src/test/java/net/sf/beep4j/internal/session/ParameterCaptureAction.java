@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal;
+package net.sf.beep4j.internal.session;
 
 import org.hamcrest.Description;
 import org.jmock.api.Action;

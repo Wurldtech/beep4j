@@ -17,7 +17,7 @@ package net.sf.beep4j.transport.mina;
 
 import net.sf.beep4j.ChannelFilterChainBuilder;
 import net.sf.beep4j.SessionHandler;
-import net.sf.beep4j.internal.SessionImpl;
+import net.sf.beep4j.internal.session.SessionImpl;
 import net.sf.beep4j.internal.stream.DefaultStreamParser;
 import net.sf.beep4j.internal.stream.DefaultTransportContext;
 import net.sf.beep4j.internal.stream.DelegatingFrameHandler;

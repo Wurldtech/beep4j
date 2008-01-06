@@ -1,37 +1,20 @@
-- CloseChannelRequest
-  - currently implemented so that method calls immediately result to actions on the channel
-  - reimplement the same way as StartChannelRequest is implemented
-  - i.e. the result of the request is processed after the call to the ChannelHandler returns
-  - this will simplify the implementation of synchronization on the session layer
+- verify call sequences on handler classes
+  - for start type notifications, change state first, then notify handler
+  - for end type notifications, first notify handler, then change state
+  - ChannelHandler#channelCloseRequested is called a potentially a long time after 
+    the CloseRequested state is attained; this could lead to problems (i.e. exceptions)
+    when the application calls methods on Channel
+    - solution 1: call ChannelHandler#channelCloseRequested immediately (i.e. before
+                  all replies have been sent)
+    - solution 2: an intermediate state that allows everything until the request is passed
+                  to the handler
 
-- testing
-  - sequencing of state transitions and handler callbacks
-
-- refactor to show clear layer structure
-  - session layer
-    - is responsible to dispatch messages to the correct handlers in the client application
-    - is responsible to send messages from the application to the underlying layer
-    - works with messages
-    - SessionImpl
-    - ChannelImpl
-    - ChannelManagementProfile
-  - note: the stream layer needs to know when channels are created / destroyed to
-          update its internal structures (namely, there is one FrameHandler per channel)
-
-- synchronizing stream layer
-  - the stream layer needs to be synchronized
-  - do not call session / transport layer while holding locks
-  - is synchronization possible on a class level?
-  - clear layer interface to session layer
-    - BeepStream: used by session layer to send messages and close transport
-    - X: used by stream layer to talk to session layer (MessageHandler + TransportHandler)
-    - Transport: used by stream layer to talk to underlying transport layer
-    - TransportContext: used by transport layer to talk to the stream layer
-
-- ChannelManagementProfile
-  - review whether it makes sense to implement it kind of like a real profile
-  - probably implement it just as integral part of the session layer
-  - this will reduce unecessary locking / unlocking of the session
+- exception handling on client classes (handlers)
+  - SessionHandler, ChannelHandler, and ReplyHandler
+  - allow handlers to throw any exception?
+  - catch exceptions and
+    - terminate session?
+    - delegate back to the handlers? i.e. ChannelHandler#exceptionCaught?
 
 - CloseChannelCallback vs. Future
   - Channel#close(:CloseChannelCallback):void
@@ -43,25 +26,10 @@
   - however, beep4j calls application code (handlers) while still holding
     the session monitor
   - this could lead to deadlock (depending on how the application is programmed)
-
-- exception handling on client classes (handlers)
-  - SessionHandler, ChannelHandler, and ReplyHandler
-  - allow handlers to throw any exception?
-  - catch exceptions and
-    - terminate session?
-    - delegate back to the handlers? i.e. ChannelHandler#exceptionCaught?
-
-- ChannelFilter
-  - same as IoFilter in MINA
-  - filter methods on Channel as well as ChannelHandler
-  - allow implementation of cross-cutting concerns
   
 - Channel
   - add state to channel?
   - Channel#setAttribute(name,value)
-
-- ChannelHandler
-  - messageReceived(msg:Object,handler:ResponseHandler)
 
 - logging
   - add context: remote peer address, ...
@@ -80,7 +48,6 @@
     }
   
 - SessionHandler
-  - add method startChannelFailed?
   - add method exceptionCaught?
 
 - support Content-Transfer-Encoding: base64, (quoted-printable)
@@ -100,15 +67,6 @@
 - logging
   - net.sf.beep4j.transport: logging of transport layer events
   - net.sf.beep4j.transport.DATA: all data passing through the transport layer
-
-- refactoring SessionImpl
-  - delegate as much as possible to InternalChannel / ChannelHandler
-  - get rid of those maps that contain the channelNumber as key
-  - no longer use ChannelHandler from session?
-  - instead use InternalChannel interface to communicate with channels?
-  - session only needs to know InternalChannel per channel
-
-- testing ChannelImpl
 
 - session message bus
 

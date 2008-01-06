@@ -1,5 +1,5 @@
 /*
- *  Copyright 2007 Simon Raess
+ *  Copyright 2006 Simon Raess
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -13,79 +13,79 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package net.sf.beep4j.internal;
+
+package net.sf.beep4j.internal.session;
 
 import java.util.concurrent.locks.ReentrantLock;
 
 import net.sf.beep4j.Message;
-import net.sf.beep4j.ReplyHandler;
+import net.sf.beep4j.Reply;
 import net.sf.beep4j.internal.util.Assert;
 
 /**
- * ReplyHandler that unlocks a lock before calling a target handler. After
- * returning from the target handler, the lock is again acquired.
+ * Decorator reply adding locking around calls to the target
+ * Reply.
  * 
  * @author Simon Raess
  */
-final class UnlockingReplyHandler implements ReplyHandler {
+final class LockingReply implements Reply {
 	
-	private final ReplyHandler target;
+	private final Reply target;
 	
 	private final ReentrantLock lock;
 	
-	public UnlockingReplyHandler(ReplyHandler target, ReentrantLock lock) {
+	LockingReply(Reply target, ReentrantLock lock) {
 		Assert.notNull("target", target);
 		this.target = target;
 		this.lock = lock;
 	}
-	
+
 	private void unlock() {
 		if (lock != null) {
 			lock.unlock();
 		}
 	}
-	
+
 	private void lock() {
 		if (lock != null) {
 			lock.lock();
 		}
 	}
 	
-	public void receivedANS(Message message) {
-		unlock();
+	public void sendANS(Message message) {
+		lock();
 		try {
-			target.receivedANS(message);
+			target.sendANS(message);
 		} finally {
-			lock();
+			unlock();
 		}
 	}
-
-	public void receivedERR(Message message) {
-		unlock();
+	
+	public void sendNUL() {
+		lock();
 		try {
-			target.receivedERR(message);
+			target.sendNUL();
 		} finally {
-			lock();
+			unlock();
 		}
 	}
-
-	public void receivedNUL() {
-		unlock();
+	
+	public void sendERR(Message message) {
+		lock();
 		try {
-			target.receivedNUL();
+			target.sendERR(message);
 		} finally {
-			lock();
+			unlock();
 		}
 	}
-
-	public void receivedRPY(Message message) {
-		unlock();
+	
+	public void sendRPY(Message message) {
+		lock();
 		try {
-			target.receivedRPY(message);
+			target.sendRPY(message);
 		} finally {
-			lock();
+			unlock();
 		}
 	}
-
+	
 }
-
