@@ -587,42 +587,50 @@ class ChannelImpl implements Channel, InternalChannel {
 		
 	}
 	
-	private static abstract class AbstractState implements State {
+	private abstract class AbstractState implements State {
 		
 		public void checkCondition() {
 			// nothing to check
 		}
 		
 		public void sendMessage(Message message, ReplyHandler replyHandler) {
-			throw new IllegalStateException();
+			throw new IllegalStateException(buildExceptionMessage("sendMessage"));
 		}
 		
 		public void closeInitiated(CloseChannelCallback callback) {
-			throw new IllegalStateException();
+			throw new IllegalStateException(buildExceptionMessage("closeInitiated"));
 		}
 		
 		public void closeRequested(CloseCallback callback) {
-			throw new IllegalStateException();
+			throw new IllegalStateException(buildExceptionMessage("closeRequested"));
 		}
 		
 		public void receiveMSG(Message message, Reply reply) {
-			throw new IllegalStateException();
+			throw new IllegalStateException(buildExceptionMessage("receiveMSG"));
 		}
 		
 		public void receiveANS(ReplyHandler replyHandler, Message message) {
-			throw new IllegalStateException();
+			throw new IllegalStateException(buildExceptionMessage("receiveANS"));
 		}
 		
 		public void receiveNUL(ReplyHandler replyHandler) {
-			throw new IllegalStateException();
+			throw new IllegalStateException(buildExceptionMessage("receiveNUL"));
 		}
 		
 		public void receiveERR(ReplyHandler replyHandler, Message message) {
-			throw new IllegalStateException();
+			throw new IllegalStateException(buildExceptionMessage("receiveERR"));
 		}
 		
 		public void receiveRPY(ReplyHandler replyHandler, Message message) {
-			throw new IllegalStateException();
+			throw new IllegalStateException(buildExceptionMessage("receiveRPY"));
+		}
+		
+		private String buildExceptionMessage(String method) {
+			StringBuilder builder = new StringBuilder();
+			builder.append("state ").append(getClass().getSimpleName());
+			builder.append(" does not support ").append(method);
+			builder.append(" (channel = ").append(channelNumber).append(")");
+			return builder.toString();
 		}
 	}
 	
