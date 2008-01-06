@@ -15,6 +15,7 @@
  */
 package net.sf.beep4j.ext;
 
+import net.sf.beep4j.ChannelHandler;
 import net.sf.beep4j.Session;
 import net.sf.beep4j.SessionHandler;
 import net.sf.beep4j.StartChannelRequest;
@@ -78,6 +79,14 @@ public abstract class SessionHandlerAdapter implements SessionHandler {
 		Assert.notNull("session", session);
 		LOG.debug("sessionOpened");
 		this.session = session;
+	}
+	
+	/**
+	 * Notifies the handler that the channel start request has been denied by the
+	 * remote peer.
+	 */
+	public void channelStartFailed(String profileUri, ChannelHandler channelHandler, int code, String message) {
+		// ignored
 	}
 
 	/**

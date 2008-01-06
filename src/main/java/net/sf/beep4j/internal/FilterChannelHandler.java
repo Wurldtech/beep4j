@@ -45,10 +45,6 @@ final class FilterChannelHandler implements ChannelHandler {
 		}
 	}
 
-	public void channelStartFailed(int code, String message) {
-		target.channelStartFailed(code, message);
-	}
-
 	public void messageReceived(Message message, Reply reply) {
 		FilterChainTargetHolder.setChannelHandler(target);
 		try {

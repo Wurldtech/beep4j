@@ -90,13 +90,23 @@ public interface SessionHandler {
 	void sessionOpened(Session s);
 	
 	/**
+	 * Notifies the SessionHandler that starting the specified channel has failed.
+	 * 
+	 * @param profileUri the URI of the requested profile
+	 * @param channelHandler the channel handler passed to one of the Session startChannel methods
+	 * @param code the error code from the remote peer
+	 * @param message the error message from the remote peer
+	 */
+	void channelStartFailed(String profileUri, ChannelHandler channelHandler, int code, String message);
+	
+	/**
 	 * This method is invoked when the other peer wants to start
 	 * a new channel. The passed in ChannelStartup method should
 	 * be used to select a suitable channel and to install a
 	 * ChannelHandler.
 	 * 
 	 * <pre>
-	 *   public void startChannel(StartChannelRequest request) {
+	 *   public void channelStartRequested(StartChannelRequest request) {
 	 *     request.selectProfile(startup.getProfiles()[0]);
 	 *     request.setChannelHandler(new MyChannelHandler());
 	 *   }
@@ -106,7 +116,7 @@ public interface SessionHandler {
 	 * it.
 	 * 
 	 * <pre>
-	 *   public void startChannel(Session s, StartChannelRequest request) {
+	 *   public void channelStartRequested(Session s, StartChannelRequest request) {
 	 *     request.cancel(550, "still working");
 	 *   }
 	 * </pre>

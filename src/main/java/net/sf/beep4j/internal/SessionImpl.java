@@ -120,6 +120,10 @@ public class SessionImpl
 		deadState = createDeadState();
 		currentState = initialState;
 	}
+	
+	public void setChannelFilterChainBuilder(ChannelFilterChainBuilder filterChainBuilder) {
+		this.filterChainBuilder = filterChainBuilder == null ? new NullChannelFilterChainBuilder() : filterChainBuilder;
+	}
 
 	protected DeadState createDeadState() {
 		return new DeadState();
@@ -268,19 +272,19 @@ public class SessionImpl
 		startChannel(new ProfileInfo(profileUri), handler);
 	}
 	
-	public void startChannel(final ProfileInfo profile, final ChannelHandler handler) {
+	public void startChannel(final ProfileInfo profile, final ChannelHandler channelHandler) {
 		startChannel(new ProfileInfo[] { profile }, new ChannelHandlerFactory() {
 			public ChannelHandler createChannelHandler(ProfileInfo info) {
 				if (!profile.getUri().equals(info.getUri())) {
 					throw new IllegalArgumentException("profile URIs do not match: "
 							+ profile.getUri() + " | " + info.getUri());
 				}
-				return handler;
+				return channelHandler;
 			}
 			public void startChannelFailed(int code, String message) {
 				unlock();
 				try {
-					handler.channelStartFailed(code, message);
+					sessionHandler.channelStartFailed(profile.getUri(), channelHandler, code, message);
 				} finally {
 					lock();
 				}

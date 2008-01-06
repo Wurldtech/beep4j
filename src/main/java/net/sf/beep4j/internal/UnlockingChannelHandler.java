@@ -62,15 +62,6 @@ final class UnlockingChannelHandler implements ChannelHandler {
 		}
 	}
 	
-	public void channelStartFailed(int code, String message) {
-		unlock();
-		try {
-			target.channelStartFailed(code, message);
-		} finally {
-			lock();
-		}
-	}
-	
 	public void messageReceived(Message message, Reply reply) {
 		unlock();
 		try {

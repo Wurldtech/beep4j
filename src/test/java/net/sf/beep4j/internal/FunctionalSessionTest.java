@@ -407,7 +407,8 @@ public class FunctionalSessionTest extends TestCase {
 			one(beepStream).sendMSG(0, messageNumber, createStartMessage(channelNumber, profiles));
 			inSequence(sequence);
 			
-			one(channelHandler).channelStartFailed(errorCode, errorMessage);
+			one(sessionHandler).channelStartFailed(profiles[0].getUri(), channelHandler, errorCode, errorMessage);
+			inSequence(sequence);
 		}});
 		
 		session.startChannel(profiles[0], channelHandler);

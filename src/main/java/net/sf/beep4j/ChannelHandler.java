@@ -38,14 +38,6 @@ public interface ChannelHandler {
 	void channelOpened(Channel c);
 	
 	/**
-	 * Invoked by the framework when the channel could not be started.
-	 * 
-	 * @param code the error code
-	 * @param message the human readable error message
-	 */
-	void channelStartFailed(int code, String message);
-	
-	/**
 	 * Invoked by the framework when the other peer sent a message
 	 * to this peer on this channel. 
 	 * 

@@ -18,6 +18,7 @@ package net.sf.beep4j.internal;
 
 import java.util.concurrent.locks.Lock;
 
+import net.sf.beep4j.ChannelHandler;
 import net.sf.beep4j.Session;
 import net.sf.beep4j.SessionHandler;
 import net.sf.beep4j.StartChannelRequest;
@@ -67,6 +68,15 @@ class UnlockingSessionHandler implements SessionHandler {
 		unlock();
 		try {
 			target.sessionStartDeclined(code, message);
+		} finally {
+			lock();
+		}
+	}
+	
+	public void channelStartFailed(String profileUri, ChannelHandler channelHandler, int code, String message) {
+		unlock();
+		try {
+			target.channelStartFailed(profileUri, channelHandler, code, message);
 		} finally {
 			lock();
 		}
