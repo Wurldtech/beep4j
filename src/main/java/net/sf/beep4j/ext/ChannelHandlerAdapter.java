@@ -45,6 +45,11 @@ public abstract class ChannelHandlerAdapter implements ChannelHandler {
 		return channel;
 	}
 	
+	/**
+	 * Creates a MessageBuilder for a new Message.
+	 * 
+	 * @return a newly instantiated MessageBuilder
+	 */
 	protected MessageBuilder createMessageBuilder() {
 		return channel.createMessageBuilder();
 	}

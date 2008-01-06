@@ -9,12 +9,17 @@
     - solution 2: an intermediate state that allows everything until the request is passed
                   to the handler
 
+- consider decorator style implementation for filtering on Channel interface
+  - first, the state must be considered
+  - then the chain can be called
+  - so the decorator must be based somehow on the state classes?
+
 - exception handling on client classes (handlers)
   - SessionHandler, ChannelHandler, and ReplyHandler
   - allow handlers to throw any exception?
   - catch exceptions and
     - terminate session?
-    - delegate back to the handlers? i.e. ChannelHandler#exceptionCaught?
+    - delegate back to the handlers? e.g. ChannelHandler#exceptionCaught?
 
 - CloseChannelCallback vs. Future
   - Channel#close(:CloseChannelCallback):void
@@ -46,13 +51,8 @@
       processEvents(buf)
       follow()
     }
-  
-- SessionHandler
-  - add method exceptionCaught?
 
 - support Content-Transfer-Encoding: base64, (quoted-printable)
-  
-- general review of exception handling
 
 - GenericSessionHandler -> SessionHandler
   - factory:ChannelHandlerFactory
@@ -72,25 +72,6 @@
 
   MessageBus
   +dispatchEvent(o:Object)
-
-- sequence of message calls
-  - first notify application
-  - then do the real work
-  - rational: the application knows about the event; 
-  - e.g. before it is no longer possible to use a Channel 
-
-- starting channel
-
-  Session#startChannel
-  ChannelHandler#channelOpened
-  
-- successfully closing channel Channel#close
-  
-  CloseChannelCallback#closeAccepted
-  ChannelHandler#channelClosed
-  channel state = <dead>
-  unregister channel from session
-  fire channel closed event
 
   
   
