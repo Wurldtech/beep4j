@@ -14,6 +14,15 @@
   - then the chain can be called
   - so the decorator must be based somehow on the state classes?
 
+- create bidirectional echo profile
+  - client connects to server
+  - client opens channel
+  - client sends an arbitrary number of echo requests (simply unstructured messages)
+  - server echos the message back
+  - and sends a request of its own on the same channel
+  - client responds and for that message, the exchange is terminated
+  - of course, the client can send as many requests on the same channel as it wants
+
 - exception handling on client classes (handlers)
   - SessionHandler, ChannelHandler, and ReplyHandler
   - allow handlers to throw any exception?
