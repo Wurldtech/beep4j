@@ -165,7 +165,7 @@ public class SessionImplTest extends TestCase {
 		// test
 		SessionImpl session = new SessionImpl(false, sessionHandler, beepStream) {
 			@Override
-			protected ManagementProfile createChannelManagementProfile(boolean initiator) {
+			protected ManagementProfile createManagementProfile(boolean initiator) {
 				return profile;
 			}
 		};
@@ -208,7 +208,7 @@ public class SessionImplTest extends TestCase {
 		// test
 		MessageHandler session = new SessionImpl(false, sessionHandler, beepStream) {
 			@Override
-			protected ManagementProfile createChannelManagementProfile(boolean initiator) {
+			protected ManagementProfile createManagementProfile(boolean initiator) {
 				return profile;
 			}
 		};
@@ -256,7 +256,7 @@ public class SessionImplTest extends TestCase {
 		// test
 		SessionImpl session = new SessionImpl(false, sessionHandler, beepStream) {
 			@Override
-			protected ManagementProfile createChannelManagementProfile(boolean initiator) {
+			protected ManagementProfile createManagementProfile(boolean initiator) {
 				return profile;
 			}
 		};
@@ -319,7 +319,7 @@ public class SessionImplTest extends TestCase {
 		// test
 		SessionImpl session = new SessionImpl(false, sessionHandler, beepStream) {
 			@Override
-			protected ManagementProfile createChannelManagementProfile(boolean initiator) {
+			protected ManagementProfile createManagementProfile(boolean initiator) {
 				return profile;
 			}
 		};
@@ -435,7 +435,7 @@ public class SessionImplTest extends TestCase {
 		// test
 		InternalSession session = new SessionImpl(false, sessionHandler, beepStream) {
 			@Override
-			protected ManagementProfile createChannelManagementProfile(boolean initiator) {
+			protected ManagementProfile createManagementProfile(boolean initiator) {
 				return profile;
 			}
 		};

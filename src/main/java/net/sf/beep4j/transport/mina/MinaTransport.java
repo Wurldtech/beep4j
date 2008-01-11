@@ -112,9 +112,6 @@ public class MinaTransport extends IoHandlerAdapter implements Transport {
 		if (LOG.isDebugEnabled()) {
 			LOG.debug("received " + buffer.remaining() + " bytes");
 		}
-		if (DATA_LOG.isDebugEnabled()) {
-			DATA_LOG.debug(HexDump.dump(buffer.buf()));
-		}
 		context.messageReceived(buffer.buf());
 	}
 	

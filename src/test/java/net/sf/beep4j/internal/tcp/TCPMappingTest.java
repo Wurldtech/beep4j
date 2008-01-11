@@ -95,15 +95,17 @@ public class TCPMappingTest extends TestCase {
 		TCPMapping mapping = new TCPMapping(transport, factory);
 		
 		// define expectations
+		factoryCtrl.expectAndReturn(factory.createChannelController(1, transport), null);
 		replay();
 		
 		// test
-		mapping.channelStarted(0);
-		mapping.channelClosed(0);
+		mapping.channelStarted(0);	
+		mapping.channelStarted(1);
+		mapping.channelClosed(1);
 		
 		try {
-			mapping.checkFrame(0, 0, 50);
-			fail("channel 0 is closed, does not have a controller");
+			mapping.checkFrame(1, 0, 50);
+			fail("channel 1 is closed, does not have a controller");
 		} catch (Exception e) {
 			// expected
 			// TODO: catch proper exception

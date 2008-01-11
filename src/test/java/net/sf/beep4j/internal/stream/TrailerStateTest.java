@@ -71,6 +71,31 @@ public class TrailerStateTest extends TestCase {
 		control.verify();
 	}
 	
+	public void testProcessZeroLength() throws Exception {
+		MockControl control = MockControl.createControl(ParseStateContext.class);
+		ParseStateContext context = (ParseStateContext) control.getMock();
+		
+		context.handleTrailer();
+		control.replay();
+
+		Charset charset = Charset.forName("US-ASCII");
+		ParseState state = new TrailerState();
+
+		ByteBuffer buffer = charset.encode("E");
+		assertFalse(state.process(buffer, context));
+		assertEquals(1, buffer.position());
+		
+		buffer = charset.encode("");
+		assertFalse(state.process(buffer, context));
+		assertEquals(0, buffer.position());
+		
+		buffer = charset.encode("ND\r\nMSG");
+		assertTrue(state.process(buffer, context));
+		assertEquals(4, buffer.position());
+		
+		control.verify();
+	}
+	
 	public void testProcessComplex() throws Exception {
 		MockControl control = MockControl.createControl(ParseStateContext.class);
 		ParseStateContext context = (ParseStateContext) control.getMock();

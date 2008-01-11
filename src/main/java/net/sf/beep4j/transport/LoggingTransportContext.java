@@ -20,11 +20,11 @@ import java.io.StringWriter;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import net.sf.beep4j.internal.util.Assert;
 import net.sf.beep4j.internal.util.HexDump;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Logging interceptor for methods of TransportContext.
@@ -54,6 +54,8 @@ public class LoggingTransportContext implements TransportContext {
 	public void messageReceived(ByteBuffer buffer) {
 		if (LOG.isDebugEnabled()) {
 			LOG.debug("message received");
+		}
+		if (DATA_LOG.isDebugEnabled()) {
 			DATA_LOG.debug(HexDump.dump(buffer));
 		}
 		target.messageReceived(buffer);

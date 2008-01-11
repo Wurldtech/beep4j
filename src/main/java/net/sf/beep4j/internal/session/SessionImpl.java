@@ -16,10 +16,10 @@
 package net.sf.beep4j.internal.session;
 
 import java.net.SocketAddress;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
@@ -83,11 +83,11 @@ public class SessionImpl
 	
 	private final Sequence<Integer> channelNumberSequence;
 	
-	private final List<SessionListener> listeners = Collections.synchronizedList(new ArrayList<SessionListener>());
-	
 	private ChannelFilterChainBuilder filterChainBuilder = new NullChannelFilterChainBuilder();
 	
 	private final ReentrantLock sessionLock = new ReentrantLock();
+	
+	private final List<SessionListener> eventListeners = Collections.synchronizedList(new LinkedList<SessionListener>());
 	
 	private SessionState currentState;
 	
@@ -114,7 +114,7 @@ public class SessionImpl
 		
 		addSessionListener(beepStream);
 				
-		this.channelManagementProfile = createChannelManagementProfile(initiator);
+		this.channelManagementProfile = createManagementProfile(initiator);
 		initChannelManagementProfile();
 		
 		this.channelNumberSequence = new IntegerSequence(initiator ? 1 : 2, 2);
@@ -146,7 +146,7 @@ public class SessionImpl
 		return new InitialState();
 	}
 	
-	protected ManagementProfile createChannelManagementProfile(boolean initiator) {
+	protected ManagementProfile createManagementProfile(boolean initiator) {
 		return new ManagementProfileImpl(initiator);
 	}
 
@@ -211,24 +211,21 @@ public class SessionImpl
 	}
 
 	public void addSessionListener(SessionListener l) {
-		listeners.add(l);
+		eventListeners.add(l);
 	}
 	
 	protected void fireChannelStarted(int channel) {
-		SessionListener[] list = listeners.toArray(new SessionListener[listeners.size()]);
-		for (int i = 0; i < list.length; i++) {
-			SessionListener listener = list[i];
+		SessionListener[] listeners = eventListeners.toArray(new SessionListener[eventListeners.size()]);
+		for (SessionListener listener : listeners) {
 			listener.channelStarted(channel);
-		}	
+		}
 	}
 
 	protected void fireChannelClosed(int channel) {
-		SessionListener[] list = listeners.toArray(new SessionListener[listeners.size()]);
-		for (int i = 0; i < list.length; i++) {
-			SessionListener listener = list[i];
+		SessionListener[] listeners = eventListeners.toArray(new SessionListener[eventListeners.size()]);
+		for (SessionListener listener : listeners) {
 			listener.channelClosed(channel);
 		}
-		
 	}
 	
 	private int getNextChannelNumber() {
@@ -809,6 +806,12 @@ public class SessionImpl
 		@Override
 		public StartChannelResponse channelStartRequested(int channelNumber, ProfileInfo[] profiles) {
 			debug("start of channel ", channelNumber, " requested by remote peer: ", Arrays.toString(profiles));
+			
+			// of course, requesting to start the same channel twice is non-sense, terminate session
+			if (channels.containsKey(channelNumber)) {
+				throw new ProtocolException("the given channel with number " + channelNumber + " is already open");
+			}
+			
 			DefaultStartChannelRequest request = new DefaultStartChannelRequest(profiles);
 			sessionHandler.channelStartRequested(request);
 			

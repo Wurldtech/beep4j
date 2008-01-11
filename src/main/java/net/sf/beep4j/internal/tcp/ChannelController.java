@@ -105,5 +105,44 @@ public interface ChannelController {
 	 * @param size the size of the frame
 	 */
 	void frameReceived(long seqno, int size);
+	
+	/**
+	 * Null Object implementation of the ChannelController interface.
+	 */
+	ChannelController NULL = new ChannelController() {
+		
+		public void checkFrame(long seqno, int payloadSize) {
+			// swallow
+		}
+
+		public void frameReceived(long seqno, int size) {
+			// swallow
+		}
+
+		public void sendANS(int messageNumber, int answerNumber, Message message) {
+			// swallow
+		}
+
+		public void sendERR(int messageNumber, Message message) {
+			// swallow
+		}
+
+		public void sendMSG(int messageNumber, Message message) {
+			// swallow
+		}
+
+		public void sendNUL(int messageNumber) {
+			// swallow
+		}
+
+		public void sendRPY(int messageNumber, Message message) {
+			// swallow
+		}
+
+		public void updateSendWindow(long ackno, int size) {
+			// swallow
+		}
+
+	};
 
 }

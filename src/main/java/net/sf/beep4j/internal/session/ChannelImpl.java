@@ -349,9 +349,17 @@ class ChannelImpl implements Channel, InternalChannel {
 		openOutgoingReplies++;
 	}
 	
-	protected synchronized void outgoingReplyCompleted() {
-		openOutgoingReplies--;
-		state.checkCondition();
+	protected void outgoingReplyCompleted() {
+		synchronized (this) {
+			openOutgoingReplies--;
+		}
+		
+		lock();
+		try {
+			state.checkCondition();
+		} finally {
+			unlock();
+		}
 	}
 	
 	protected synchronized boolean hasOpenOutgoingReplies() {
@@ -362,9 +370,17 @@ class ChannelImpl implements Channel, InternalChannel {
 		openIncomingReplies++;
 	}
 	
-	protected synchronized void incomingReplyCompleted() {
-		openIncomingReplies--;
-		state.checkCondition();
+	protected void incomingReplyCompleted() {
+		synchronized (this) {
+			openIncomingReplies--;
+		}
+		
+		lock();
+		try {
+			state.checkCondition();
+		} finally {
+			unlock();
+		}
 	}
 	
 	protected synchronized boolean hasOpenIncomingReplies() {
@@ -372,7 +388,12 @@ class ChannelImpl implements Channel, InternalChannel {
 	}
 	
 	protected synchronized boolean isReadyToShutdown() {
-		return !hasOpenOutgoingReplies() && !hasOpenIncomingReplies();
+		return !hasOpenIncomingReplies() && !hasOpenOutgoingReplies();
+	}
+	
+	@Override
+	public String toString() {
+		return "channel-" + channelNumber;
 	}
 
 	/**
@@ -391,6 +412,7 @@ class ChannelImpl implements Channel, InternalChannel {
 		@Override
 		public void filterClose(NextFilter next, CloseChannelCallback callback) {
 			// TODO: perform close
+			System.out.println("filterClose: not implemented");
 		}
 
 		@Override
@@ -694,6 +716,13 @@ class ChannelImpl implements Channel, InternalChannel {
 			channelHandler.messageReceived(message, reply);
 		}
 		
+		/**
+		 * Sending the close channel request is allowed as soon as all
+		 * sent messages have been acknowledged. beep4j is a bit more
+		 * strict. I requires that for all sent messages complete
+		 * replies have been received and that all received messages
+		 * have been answered.
+		 */
 		@Override
 		public void checkCondition() {
 			if (isReadyToShutdown()) {
@@ -707,6 +736,7 @@ class ChannelImpl implements Channel, InternalChannel {
 						channelHandler.channelClosed();
 					}
 				};
+				setState(new CloseInitiatedSentState(callback));
 				session.requestChannelClose(channelNumber, closeCallback);
 			}
 		}
@@ -725,6 +755,16 @@ class ChannelImpl implements Channel, InternalChannel {
 			closeCallback.closeAccepted();
 		}
 		
+	}
+	
+	private class CloseInitiatedSentState extends CloseInitiated {
+		public CloseInitiatedSentState(CloseChannelCallback callback) {
+			super(callback);
+		}
+		@Override
+		public void checkCondition() {
+			// nothing to check
+		}
 	}
 	
 	private class CloseRequested extends AbstractReceivingState {

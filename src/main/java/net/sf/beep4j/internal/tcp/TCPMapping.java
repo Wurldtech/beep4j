@@ -99,11 +99,38 @@ public class TCPMapping implements TransportMapping, BeepStream, ChannelControll
 	 * @return the ChannelController for the given channel
 	 * @throws ProtocolException if the given channel is not open
 	 */
-	private synchronized ChannelController getChannelController(int channel) {
+	protected synchronized ChannelController getChannelController(int channel) {
 		ChannelController controller = channels.get(new Integer(channel));
 		if (controller == null) {
 			throw new ProtocolException("unknown channel: " + channel);
 		}
+		return controller;
+	}
+	
+	/**
+	 * Gets the existing ChannelController or a special NullChannelController if
+	 * no such channel exists. This method has to be used by {@link #frameReceived(int, long, int)}
+	 * because that method might be called after {@link #channelClosed(int)} has
+	 * been called for that channel. This can happen only if the close channel
+	 * request is not accepted right away, because the local peer still awaits
+	 * replies to messages it has sent. When it receives the last of those
+	 * replies the {@link #channelClosed(int)} method is called on the
+	 * same call stack.
+	 * 
+	 * <p>A NullChannelController is returned if the channel has been closed.
+	 * It does not make sense to send a mapping frame in these cases. So
+	 * a null object is a correct choice.</p>
+	 * 
+	 * @param channel
+	 * @return a ChannelController for that channel
+	 */
+	protected synchronized ChannelController lenientGetChannelController(int channel) {
+		ChannelController controller = channels.get(new Integer(channel));
+		
+		if (controller == null) {
+			controller = ChannelController.NULL;
+		}
+
 		return controller;
 	}
 
@@ -124,7 +151,7 @@ public class TCPMapping implements TransportMapping, BeepStream, ChannelControll
 	}
 	
 	public void frameReceived(int channel, long seqno, int size) {
-		getChannelController(channel).frameReceived(seqno, size);
+		lenientGetChannelController(channel).frameReceived(seqno, size);
 	}
 
 	public void processMappingFrame(String[] tokens) {

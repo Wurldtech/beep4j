@@ -61,7 +61,7 @@ final class TrailerState implements ParseState {
 			String trailer = charset.decode(tmp).toString();
 				
 			if (!TRAILER.equals(trailer)) {
-				throw new ProtocolException("expected 'END<CR><LF>' (was '" + trailer + "'");
+				throw new ProtocolException("expected 'END<CR><LF>' (was '" + trailer + "')");
 			}
 			
 			// move the position past the header

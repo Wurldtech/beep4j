@@ -76,7 +76,9 @@ public class DefaultStreamParser implements StreamParser, ParseStateContext {
 	}
 		
 	public void handleHeader(String[] tokens) {
-		LOG.debug("got header: " + Arrays.toString(tokens));
+		if (LOG.isDebugEnabled()) {
+			LOG.debug("got header: " + Arrays.toString(tokens));
+		}
 		
 		if (isStandardType(tokens[0])) {			
 			header = DataHeader.parseHeader(tokens);
