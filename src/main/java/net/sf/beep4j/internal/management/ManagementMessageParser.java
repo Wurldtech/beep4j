@@ -18,7 +18,7 @@ package net.sf.beep4j.internal.management;
 import net.sf.beep4j.Message;
 import net.sf.beep4j.ProfileInfo;
 
-public interface ManagementMessageParser {
+interface ManagementMessageParser {
 	
 	ManagementRequest parseRequest(Message message);
 	

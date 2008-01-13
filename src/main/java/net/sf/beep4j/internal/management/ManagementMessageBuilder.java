@@ -19,18 +19,74 @@ import net.sf.beep4j.Message;
 import net.sf.beep4j.MessageBuilder;
 import net.sf.beep4j.ProfileInfo;
 
-public interface ManagementMessageBuilder {
+/**
+ * A ManagementMessageBuilder is used to build {@link Message} objects for
+ * all the messages sent by the channel management profile.
+ * 
+ * @author Simon Raess
+ */
+interface ManagementMessageBuilder {
 	
+	/**
+	 * Creates a BEEP greeting message that contains the specified greetings.
+	 * See section 2.3.1.1 of RFC 3080.
+	 * 
+	 * @param builder the {@link MessageBuilder} used to build a {@link Message}
+	 * @param profiles the profiles supported by the peer
+	 * @return a {@link Message} object containing a well-formed greeting
+	 */
 	Message createGreeting(MessageBuilder builder, String[] profiles);
-
-	Message createProfile(MessageBuilder builder, ProfileInfo profile);
-
+	
+	/**
+	 * Creates a BEEP ok message. See section 2.3.1.4 of RFC 3080.
+	 * 
+	 * @param builder the {@link MessageBuilder} used to build a {@link Message}
+	 * @return the {@link Message} object containing a well-formed ok response
+	 */
 	Message createOk(MessageBuilder builder);
 
+	/**
+	 * Creates a BEEP error message using the given code and message. See section
+	 * 2.3.1.5 of RFC 3080.
+	 * 
+	 * @param builder the {@link MessageBuilder} used to build a {@link Message}
+	 * @param code the error code
+	 * @param message the error diagnostic message
+	 * @return a {@link Message} object containing a well-formed error response
+	 */
 	Message createError(MessageBuilder builder, int code, String message);
+	
+	/**
+	 * Creates a BEEP start channel message with the given channel number and
+	 * requested profiles. See section 2.3.1.2 of RFC 3080.
+	 * 
+	 * @param builder the {@link MessageBuilder} used to build a {@link Message}
+	 * @param channelNumber the channel number of the newly created channel
+	 * @param profiles the set of profiles that are acceptable for the channel
+	 * @return a {@link Message} containing a well-formed start message
+	 */
+	Message createStart(MessageBuilder builder, int channelNumber, ProfileInfo[] profiles);
 
-	Message createStart(MessageBuilder builder, int channelNumber, ProfileInfo[] infos);
-
+	/**
+	 * Creates a BEEP profile message using the given {@link ProfileInfo} object.
+	 * This message is the response to the start channel message. See section
+	 * 2.3.1.2 of RFC 3080.
+	 * 
+	 * @param builder the {@link MessageBuilder} used to build a {@link Message}
+	 * @param profile the profile used by the newly created channel
+	 * @return a {@link Message} object containing a well-formed profile response
+	 */
+	Message createProfile(MessageBuilder builder, ProfileInfo profile);
+	
+	/**
+	 * Creates a BEEP close channel message requesting to close the specified
+	 * channel. See section 2.3.1.3 of RFC 3080.
+	 * 
+	 * @param builder the {@link MessageBuilder} used to build a {@link Message}
+	 * @param channelNumber the channel number of the channel to be closed
+	 * @param code a diagnostic code specifying why the channel should be closed
+	 * @return a {@link Message} object containing a well-formed close message
+	 */
 	Message createClose(MessageBuilder builder, int channelNumber, int code);
 	
 }
