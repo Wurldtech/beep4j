@@ -80,11 +80,7 @@
 
 - 09.01.2007
 
-  - cleanup code, check-in
-  - write tests for delayed close channel request / initiation
-  - write tests for creation of same channel twice
   - filtering
-    - Channel#close is not yet filtered...
     - review ChannelFilter interface
     - write LoggingChannelFilter, just for fun
   - logging

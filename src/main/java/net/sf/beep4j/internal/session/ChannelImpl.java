@@ -317,7 +317,7 @@ class ChannelImpl implements Channel, InternalChannel {
 	
 	public void close(CloseChannelCallback callback) {
 		Assert.notNull("callback", callback);
-		state.closeInitiated(new UnlockingCloseChannelCallback(callback, sessionLock));
+		filterChain.fireFilterClose(callback);
 	}
 
 	protected Reply wrapReply(Reply reply) {
@@ -411,8 +411,7 @@ class ChannelImpl implements Channel, InternalChannel {
 		
 		@Override
 		public void filterClose(NextFilter next, CloseChannelCallback callback) {
-			// TODO: perform close
-			System.out.println("filterClose: not implemented");
+			state.closeInitiated(new UnlockingCloseChannelCallback(callback, sessionLock));
 		}
 
 		@Override

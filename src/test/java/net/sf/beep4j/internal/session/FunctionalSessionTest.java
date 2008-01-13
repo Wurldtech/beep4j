@@ -142,6 +142,9 @@ public class FunctionalSessionTest extends TestCase {
 		
 		closeChannel(session, channel, 1, 2);
 		closeSession(session, 3);
+		
+		// verify
+		assertIsSatisfied();
 	}
 	
 	/*
@@ -160,8 +163,11 @@ public class FunctionalSessionTest extends TestCase {
 		receiveAndReplyEcho(session, channel, 1, 1, "abcdefghijklmnopqrstuvwxyz");
 		receiveAndReplyEcho(session, channel, 1, 2, "abcdefghijk");
 		
-		closeChannelRequested(session, channel, 1, 2);
+		expectAndDoCloseChannelRequested(session, channel, 1, 2);
 		closeSessionRequested(session, 3);
+		
+		// verify
+		assertIsSatisfied();
 	}
 	
 	/*
@@ -186,6 +192,9 @@ public class FunctionalSessionTest extends TestCase {
 		closeSessionRequestedReject(session, 2);
 		
 		connectionClosed(session);
+		
+		// verify
+		assertIsSatisfied();
 	}
 	
 	/*
@@ -210,6 +219,9 @@ public class FunctionalSessionTest extends TestCase {
 		} catch (ProtocolException e) {
 			// expected
 		}
+		
+		// verify
+		assertIsSatisfied();
 	}
 	
 	/*
@@ -222,35 +234,35 @@ public class FunctionalSessionTest extends TestCase {
 	 * -> results in callback from initial request beeing called back
 	 */
 	public void testReceiveCloseChannelRequestWhenCloseAlreadyInitiated() throws Exception {
-//		SessionImpl session = openSession(false, new String[] { PROFILE }, new String[0]);
-//		final ChannelStruct channel = startChannelRequested(1, 1, new ProfileInfo[] { new ProfileInfo(PROFILE) }, session);
-//		
-//		final CloseChannelCallback callback = context.mock(CloseChannelCallback.class);
-//		requestChannelClose(beepStream, channel.channel, callback, 1, 1);
-//		
-//		// close requested and immediately accepted without calling back the application
-//		Message request = createCloseMessage(1);		
-//		final Message reply = createOkMessage();
-//		
-//		// expectations
-//		context.checking(new Expectations() {{
-//			one(callback).closeAccepted(); inSequence(sequence);
-//			
-//			one(channel.handler).channelClosed();
-//			inSequence(sequence);
-//			
-//			one(beepStream).sendRPY(0, 1, reply);
-//			inSequence(sequence);
-//			
-//			one(beepStream).channelClosed(1);
-//			inSequence(sequence);
-//		}});
-//		
-//		// send close channel request
-//		session.receiveMSG(0, 1, request);
-//		
-//		// verify
-//		assertIsSatisfied();
+		SessionImpl session = openSession(false, new String[] { PROFILE }, new String[0]);
+		final ChannelStruct channel = startChannelRequested(1, 1, new ProfileInfo[] { new ProfileInfo(PROFILE) }, session);
+		
+		final CloseChannelCallback callback = context.mock(CloseChannelCallback.class);
+		requestChannelClose(beepStream, channel.channel, callback, 1, 1);
+		
+		// close requested and immediately accepted without calling back the application
+		Message request = createCloseMessage(1);		
+		final Message reply = createOkMessage();
+		
+		// expectations
+		context.checking(new Expectations() {{
+			one(callback).closeAccepted(); inSequence(sequence);
+			
+			one(channel.handler).channelClosed();
+			inSequence(sequence);
+			
+			one(beepStream).sendRPY(0, 1, reply);
+			inSequence(sequence);
+			
+			one(beepStream).channelClosed(1);
+			inSequence(sequence);
+		}});
+		
+		// send close channel request
+		session.receiveMSG(0, 1, request);
+		
+		// verify
+		assertIsSatisfied();
 	}
 	
 	/*
@@ -262,6 +274,9 @@ public class FunctionalSessionTest extends TestCase {
 	public void testLocalPeerRejectsChannelStart() throws Exception {
 		SessionImpl session = openSession(false, new String[] { PROFILE }, new String[0]);
 		startChannelRequestedReject(session, 1, 1, new ProfileInfo[] { new ProfileInfo(PROFILE) });
+		
+		// verify
+		assertIsSatisfied();
 	}
 	
 	/*
@@ -274,6 +289,9 @@ public class FunctionalSessionTest extends TestCase {
 		SessionImpl session = openSession(true, new String[0], new String[] { PROFILE });
 		assertTrue(Arrays.equals(new String[] { PROFILE }, session.getProfiles()));
 		startChannelRejected(session, 1, 1, new ProfileInfo[] { new ProfileInfo(PROFILE) });
+		
+		// verify
+		assertIsSatisfied();
 	}
 	
 	/*
@@ -298,6 +316,9 @@ public class FunctionalSessionTest extends TestCase {
 		}});
 		
 		session.receiveMSG(0, 1, createCloseMessage(0));
+		
+		// verify
+		assertIsSatisfied();
 	}
 	
 	/*
@@ -308,7 +329,20 @@ public class FunctionalSessionTest extends TestCase {
 	 * - session is terminated because of a protocol exception
 	 */
 	public void testStartRequestOfOpenChannelTerminatesSession() throws Exception {
+		String[] profiles = new String[] { PROFILE };		
+		SessionImpl session = openSession(true, profiles, new String[0]);
 		
+		startChannelRequested(2, 1, new ProfileInfo[] { new ProfileInfo(PROFILE) }, session);
+
+		try {
+			session.receiveMSG(0, 2, createStartMessage(2, new ProfileInfo[] { new ProfileInfo(PROFILE) }));
+			fail("starting an open channel must fail");
+		} catch (ProtocolException e) {
+			// expected
+		}
+		
+		// verify
+		assertIsSatisfied();
 	}
 	
 	/*
@@ -322,7 +356,19 @@ public class FunctionalSessionTest extends TestCase {
 	 * - local peer closes channel and sends positive reply
 	 */
 	public void testDelayedChannelCloseWhenRequested() throws Exception {
+		String[] profiles = new String[] { PROFILE };		
+		SessionImpl session = openSession(true, profiles, new String[0]);
+		ChannelStruct channel = startChannel(1, 1, new ProfileInfo[] { new ProfileInfo(PROFILE) }, session);
+		ReplyHandler replyHandler = sendEcho(channel.channel, 1, 1, "Hello World");
 		
+		final Message message = createEchoMessage("Hello World");
+		expectReceiveEcho(replyHandler, message);
+		expectCloseChannelRequested(channel, 1, 2);
+		doCloseChannelRequested(session, 1, 2);
+		doReceiveEcho(session, 1, 1, message);
+		
+		// verify
+		assertIsSatisfied();
 	}
 	
 	/*
@@ -335,7 +381,19 @@ public class FunctionalSessionTest extends TestCase {
 	 * - local peer receives positive reply to channel close
 	 */
 	public void testReplyingToMessagesWhenCloseInitiated() throws Exception {
+		String[] profiles = new String[] { PROFILE };		
+		SessionImpl session = openSession(true, profiles, new String[0]);
+		ChannelStruct channel = startChannel(1, 1, new ProfileInfo[] { new ProfileInfo(PROFILE) }, session);
 		
+		expectSendCloseChannelMessage(1, 2);
+		CloseChannelCallback callback = performChannelClose(channel.channel);
+		receiveAndReplyEcho(session, channel, 1, 1, "Hello World");
+		
+		expectCloseChannelAccepted(channel, callback, 1);
+		receiveOkMessage(session, 2);
+		
+		// verify
+		assertIsSatisfied();
 	}
 	
 	private SessionImpl openSession(boolean initiator, final String[] profiles, String[] remoteProfiles) {
@@ -458,14 +516,32 @@ public class FunctionalSessionTest extends TestCase {
 			final int channelNumber, 
 			final int messageNumber) {
 		
+		expectSendCloseChannelMessage(channelNumber, messageNumber);
+		CloseChannelCallback callback = performChannelClose(channel.channel);
+		expectCloseChannelAccepted(channel, callback, channelNumber);
+		receiveOkMessage(session, messageNumber);
+	}
+	
+	private CloseChannelCallback performChannelClose(final Channel channel) {
 		final CloseChannelCallback callback = context.mock(CloseChannelCallback.class);
+		channel.close(callback);
+		return callback;
+	}
+	
+	private void expectSendCloseChannelMessage(
+			final int channelNumber,
+			final int messageNumber) {
 		
 		context.checking(new Expectations() {{
 			one(beepStream).sendMSG(0, messageNumber, createCloseMessage(channelNumber));
 			inSequence(sequence);
 		}});
-
-		channel.channel.close(callback);
+	}
+	
+	private void expectCloseChannelAccepted(
+			final ChannelStruct channel, 
+			final CloseChannelCallback callback,
+			final int channelNumber) {
 		
 		context.checking(new Expectations() {{
 			one(callback).closeAccepted(); inSequence(sequence);
@@ -474,7 +550,12 @@ public class FunctionalSessionTest extends TestCase {
 			
 			one(beepStream).channelClosed(channelNumber); inSequence(sequence);
 		}});
-
+	}
+	
+	private void receiveOkMessage(
+			final SessionImpl session,
+			final int messageNumber) {
+		
 		session.receiveRPY(0, messageNumber, createOkMessage());
 	}
 	
@@ -521,12 +602,26 @@ public class FunctionalSessionTest extends TestCase {
 		channel.close(callback);
 	}
 	
-	private void closeChannelRequested(
+	private void expectAndDoCloseChannelRequested(
 			SessionImpl session, 
 			final ChannelStruct channel, 
-			int channelNumber, 
+			final int channelNumber, 
 			final int messageNumber) {
-		
+		expectCloseChannelRequested(channel, channelNumber, messageNumber);
+		doCloseChannelRequested(session, channelNumber, messageNumber);
+	}
+
+	private void doCloseChannelRequested(
+			final SessionImpl session,
+			final int channelNumber,
+			final int messageNumber) {
+		session.receiveMSG(0, messageNumber, createCloseMessage(channelNumber));
+	}
+
+	private void expectCloseChannelRequested(
+			final ChannelStruct channel,
+			final int channelNumber,
+			final int messageNumber) {
 		context.checking(new Expectations() {{
 			one(channel.handler).channelCloseRequested(with(any(CloseChannelRequest.class)));
 			will(acceptCloseChannel()); inSequence(sequence);
@@ -535,10 +630,8 @@ public class FunctionalSessionTest extends TestCase {
 			
 			one(beepStream).sendRPY(0, messageNumber, createOkMessage()); inSequence(sequence);
 			
-			one(beepStream).channelClosed(1); inSequence(sequence);			
+			one(beepStream).channelClosed(channelNumber); inSequence(sequence);			
 		}});
-
-		session.receiveMSG(0, messageNumber, createCloseMessage(1));
 	}
 
 	private void closeSession(SessionImpl session, int messageNumber) {
@@ -600,19 +693,30 @@ public class FunctionalSessionTest extends TestCase {
 	}
 	
 	private void receiveEcho(
-			MessageHandler messageHandler, 
+			final MessageHandler messageHandler, 
 			final ReplyHandler handler, 
-			int channelNumber, 
-			int messageNumber, 
-			String content) throws IOException {
+			final int channelNumber, 
+			final int messageNumber, 
+			final String content) throws IOException {
 		
 		final Message reply = createEchoMessage(content);
-		
+		expectReceiveEcho(handler, reply);
+		doReceiveEcho(messageHandler, channelNumber, messageNumber, reply);
+	}
+
+	private void doReceiveEcho(
+			final MessageHandler messageHandler,
+			final int channelNumber, final int messageNumber,
+			final Message reply) {
+		messageHandler.receiveRPY(channelNumber, messageNumber, reply);
+	}
+
+	private void expectReceiveEcho(
+			final ReplyHandler handler,
+			final Message reply) {
 		context.checking(new Expectations() {{ 
 			one(handler).receivedRPY(reply); inSequence(sequence);
 		}});
-
-		messageHandler.receiveRPY(channelNumber, messageNumber, reply);
 	}
 	
 	private void sendAndReceiveEcho(
