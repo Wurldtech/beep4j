@@ -25,7 +25,7 @@ import net.sf.beep4j.ProfileInfo;
  * 
  * @author Simon Raess
  */
-interface ManagementMessageBuilder {
+public interface ManagementMessageBuilder {
 	
 	/**
 	 * Creates a BEEP greeting message that contains the specified greetings.
