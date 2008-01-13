@@ -28,7 +28,6 @@ import static net.sf.beep4j.internal.management.XMLConstants.E_PROFILE;
 import static net.sf.beep4j.internal.management.XMLConstants.E_START;
 
 import java.io.IOException;
-import java.io.Reader;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -55,88 +54,89 @@ import org.xml.sax.helpers.DefaultHandler;
 
 public class SaxMessageParser implements ManagementMessageParser {
 	
-	public ManagementRequest parseRequest(Message message) {
+	private void processMessage(Message message, ElementHandlerContentHandler handler) {
 		try {
-			ElementHandlerContentHandler handler = new ElementHandlerContentHandler();
-			handler.registerHandler("/start", new StartElementHandler(handler));
-			handler.registerHandler("/start/profile", new ProfileElementHandler(handler));
-			handler.registerHandler("/close", new CloseElementHandler(handler));
-			
-			SAXParser parser = SAXParserFactory.newInstance().newSAXParser();
+			SAXParser parser = createParser();
 			parser.parse(new InputSource(message.getReader()), handler);
-			return (ManagementRequest) handler.peekObject();
-
-		} catch (Exception e) {
-			throw new InternalException(e);
+		} catch (SAXException e) {
+			throw new ProtocolException("received XML is not well-formed", e);
+		} catch (IOException e) {
+			throw new InternalException("failed to read from input message", e);
 		}
+	}
+
+	private SAXParser createParser() {
+		try {
+			return SAXParserFactory.newInstance().newSAXParser();
+		} catch (ParserConfigurationException e) {
+			throw new InternalException("failed to create SAX parser", e);
+		} catch (SAXException e) {
+			throw new InternalException("failed to create SAX parser", e);
+		}
+	}
+
+	public ManagementRequest parseRequest(Message message) {
+		ElementHandlerContentHandler handler = new ElementHandlerContentHandler("start | close");
+		handler.registerHandler("/start", new StartElementHandler(handler));
+		handler.registerHandler("/start/profile", new ProfileElementHandler(handler));
+		handler.registerHandler("/close", new CloseElementHandler(handler));
+			
+		processMessage(message, handler);
+
+		return (ManagementRequest) handler.peekObject();
 	}
 	
 	public BEEPError parseError(Message message) {
-		ElementHandlerContentHandler handler = new ElementHandlerContentHandler();
+		ElementHandlerContentHandler handler = new ElementHandlerContentHandler("error");
 		handler.registerHandler("/error", new ErrorElementHandler(handler));
-		try {
-			SAXParser parser = SAXParserFactory.newInstance().newSAXParser();
-			parser.parse(new InputSource(message.getReader()), handler);
-			return (BEEPError) handler.peekObject();
-		} catch (Exception e) {
-			throw new InternalException(e);
-		}
+
+		processMessage(message, handler);
+		
+		return (BEEPError) handler.peekObject();
 	}
 	
 	public void parseOk(Message message) {
-		ElementHandlerContentHandler handler = new ElementHandlerContentHandler();
+		ElementHandlerContentHandler handler = new ElementHandlerContentHandler("ok");
 		handler.registerHandler("/ok", new OkElementHandler());
-		try {
-			SAXParser parser = SAXParserFactory.newInstance().newSAXParser();
-			parser.parse(new InputSource(message.getReader()), handler);
-		} catch (Exception e) {
-			throw new InternalException(e);
-		}
+
+		processMessage(message, handler);
 	}
 	
 	public Greeting parseGreeting(Message message) {
-		ElementHandlerContentHandler handler = new ElementHandlerContentHandler();
+		ElementHandlerContentHandler handler = new ElementHandlerContentHandler("greeting");
 		handler.registerHandler("/greeting", new GreetingElementHandler(handler));
 		handler.registerHandler("/greeting/profile", new SimpleProfileElementHandler(handler));
-		try {
-			SAXParser parser = SAXParserFactory.newInstance().newSAXParser();
-			parser.parse(new InputSource(message.getReader()), handler);
-			return (Greeting) handler.peekObject();
-		} catch (Exception e) {
-			throw new InternalException(e);
-		}
+
+		processMessage(message, handler);
+		
+		return (Greeting) handler.peekObject();
 	}
 	
 	@SuppressWarnings("unchecked")
 	public ProfileInfo parseProfile(Message message) {
-		ElementHandlerContentHandler handler = new ElementHandlerContentHandler();
+		ElementHandlerContentHandler handler = new ElementHandlerContentHandler("profile");
 		handler.registerHandler("/profile", new ProfileElementHandler(handler));
 		handler.pushObject(new LinkedList<ProfileInfo>());
-		try {
-			SAXParser parser = SAXParserFactory.newInstance().newSAXParser();
-			parser.parse(new InputSource(message.getReader()), handler);
-			List<ProfileInfo> result = (List) handler.peekObject();
-			return result.get(0);
-		} catch (Exception e) {
-			throw new InternalException(e);
-		}
-	}
-	
-	protected StartChannelMessage parseStart(Reader reader) throws ParserConfigurationException, SAXException, IOException {
-		ElementHandlerContentHandler handler = new ElementHandlerContentHandler();
-		handler.registerHandler("/start", new StartElementHandler(handler));
-		SAXParser parser = SAXParserFactory.newInstance().newSAXParser();
-		parser.parse(new InputSource(reader), handler);
-		return (StartChannelMessage) handler.peekObject();
+
+		processMessage(message, handler);
+		
+		List<ProfileInfo> result = (List) handler.peekObject();
+		return result.get(0);
 	}
 	
 	protected static class ElementHandlerContentHandler extends DefaultHandler implements ElementHandlerContext {
 		
 		private final LinkedList<String> path = new LinkedList<String>();
 		
+		private final String rootElement;
+		
 		private LinkedList<Object> objectStack = new LinkedList<Object>();
 		
 		private Map<String,ElementHandler> handlers = new HashMap<String,ElementHandler>();
+		
+		protected ElementHandlerContentHandler(String rootElement) {
+			this.rootElement = rootElement;
+		}
 		
 		public Object peekObject() {
 			return objectStack.getLast();
@@ -164,7 +164,12 @@ public class SaxMessageParser implements ManagementMessageParser {
 				}
 				copy.removeLast();
 			}
-			throw new ProtocolException("no handler found for current path: " + path);
+			
+			// throw a ProtocolException, which will terminate the session silently
+			String xpath = path.toString();
+			xpath = xpath.length() > 0 ? xpath.substring(1, xpath.length() - 1) : xpath;
+			throw new ProtocolException("invalid channel management message (xpath = '" 
+					+ xpath + "'" + ",expected '" + rootElement + "')");
 		}
 		
 		private String toString(List<String> path) {

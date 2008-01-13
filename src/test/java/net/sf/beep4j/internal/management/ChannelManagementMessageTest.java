@@ -15,12 +15,14 @@
  */
 package net.sf.beep4j.internal.management;
 
+import java.io.PrintWriter;
 import java.util.Arrays;
 
 import junit.framework.TestCase;
 import net.sf.beep4j.Message;
 import net.sf.beep4j.MessageBuilder;
 import net.sf.beep4j.ProfileInfo;
+import net.sf.beep4j.ProtocolException;
 import net.sf.beep4j.internal.management.BEEPError;
 import net.sf.beep4j.internal.management.ManagementMessageBuilder;
 import net.sf.beep4j.internal.management.ManagementMessageParser;
@@ -154,6 +156,40 @@ public class ChannelManagementMessageTest extends TestCase {
 		CloseChannelMessage request = (CloseChannelMessage) parser.parseRequest(message);
 		assertEquals(2, request.getChannelNumber());
 		assertEquals(200, request.getCode());
+	}
+	
+	public void testParseInvalidRootElement() throws Exception {
+		MessageBuilder builder = new DefaultMessageBuilder();
+		builder.setCharsetName("UTF-8");
+		builder.setContentType("text", "xml");
+		
+		PrintWriter writer = new PrintWriter(builder.getWriter());
+		writer.println("<unknown-element/>");
+		writer.close();
+		
+		try {
+			parser.parseRequest(builder.getMessage());
+			fail("unknown root element must be rejected with a ProtocolException");
+		} catch (ProtocolException e) {
+			// expected
+		}
+	}
+	
+	public void testParserInvalidStartMessage() throws Exception {
+		MessageBuilder builder = new DefaultMessageBuilder();
+		builder.setCharsetName("UTF-8");
+		builder.setContentType("text", "xml");
+		
+		PrintWriter writer = new PrintWriter(builder.getWriter());
+		writer.println("<start channel='abc'/>");
+		writer.close();
+		
+		try {
+			parser.parseRequest(builder.getMessage());
+			fail("invalid start message must throw ProtocolException");
+		} catch (ProtocolException e) {
+			// expected
+		}
 	}
 	
 	private void assertArrayEquals(byte[] a, byte[] b) {
