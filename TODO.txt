@@ -61,10 +61,6 @@
 
 - next tasks
 
-  - channel states
-    - send ChannelHandler#closeRequested immediately
-    - move to state close-requested
-    - when condition is met, move to state dead
   - filtering
     - review ChannelFilter interface
     - write LoggingChannelFilter, just for fun
