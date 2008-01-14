@@ -358,12 +358,23 @@ public class FunctionalSessionTest extends TestCase {
 	public void testDelayedChannelCloseWhenRequested() throws Exception {
 		String[] profiles = new String[] { PROFILE };		
 		SessionImpl session = openSession(true, profiles, new String[0]);
-		ChannelStruct channel = startChannel(1, 1, new ProfileInfo[] { new ProfileInfo(PROFILE) }, session);
-		ReplyHandler replyHandler = sendEcho(channel.channel, 1, 1, "Hello World");
+		final ChannelStruct channel = startChannel(1, 1, new ProfileInfo[] { new ProfileInfo(PROFILE) }, session);
+		final ReplyHandler replyHandler = sendEcho(channel.channel, 1, 1, "Hello World");
 		
 		final Message message = createEchoMessage("Hello World");
-		expectReceiveEcho(replyHandler, message);
-		expectCloseChannelRequested(channel, 1, 2);
+		context.checking(new Expectations() {{
+			one(channel.handler).channelCloseRequested(with(any(CloseChannelRequest.class)));
+			will(acceptCloseChannel()); inSequence(sequence);
+
+			one(replyHandler).receivedRPY(message); inSequence(sequence);
+
+			one(channel.handler).channelClosed(); inSequence(sequence);
+			
+			one(beepStream).sendRPY(0, 2, createOkMessage()); inSequence(sequence);
+			
+			one(beepStream).channelClosed(1); inSequence(sequence);			
+		}});
+
 		doCloseChannelRequested(session, 1, 2);
 		doReceiveEcho(session, 1, 1, message);
 		

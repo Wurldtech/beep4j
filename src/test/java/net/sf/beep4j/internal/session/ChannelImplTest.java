@@ -322,7 +322,6 @@ public class ChannelImplTest extends TestCase {
 		// test
 		channel.sendMessage(m1, new NullReplyHandler());
 		channel.channelCloseRequested(callback);
-		assertIsShuttingDown(channel);
 		
 		capture.getParameter().receivedNUL();
 		assertIsAlive(channel);

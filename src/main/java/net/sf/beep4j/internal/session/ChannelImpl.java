@@ -330,19 +330,6 @@ class ChannelImpl implements Channel, InternalChannel {
 		state.closeRequested(callback);
 	}
 	
-	private void doChannelCloseRequested(CloseChannelRequest r) {
-		DefaultCloseChannelRequest request = (DefaultCloseChannelRequest) r;
-		CloseCallback callback = FilterChainTargetHolder.getCloseCallback();
-		FilterChainTargetHolder.getChannelHandler().channelCloseRequested(request);
-		if (request.isAccepted()) {
-			channelHandler.channelClosed();
-			callback.closeAccepted();
-		} else {
-			callback.closeDeclined(550, "still working");
-			setState(new Alive());
-		}
-	}
-	
 	// --> end of Channel methods <--
 	
 	protected synchronized void incrementOpenOutgoingReplies() {
@@ -454,8 +441,19 @@ class ChannelImpl implements Channel, InternalChannel {
 		}
 		
 		@Override
-		public void filterChannelCloseRequested(NextFilter next, CloseChannelRequest request) {
-			doChannelCloseRequested(request);
+		public void filterChannelCloseRequested(NextFilter next, CloseChannelRequest r) {
+			DefaultCloseChannelRequest request = (DefaultCloseChannelRequest) r;
+			FilterChainTargetHolder.getChannelHandler().channelCloseRequested(request);
+			
+			CloseCallback callback = FilterChainTargetHolder.getCloseCallback();
+			
+			// TODO: request might not get here if filters stop before
+			if (request.isAccepted()) {
+				setState(new CloseRequested(callback));
+			} else {
+				callback.closeDeclined(550, "still working");
+				setState(new Alive());
+			}
 		}
 		
 		@Override
@@ -697,7 +695,13 @@ class ChannelImpl implements Channel, InternalChannel {
 		
 		@Override
 		public void closeRequested(CloseCallback callback) {
-			setState(new CloseRequested(callback));
+			FilterChainTargetHolder.setCloseCallback(callback);
+			try {
+				channelHandler.channelCloseRequested(new DefaultCloseChannelRequest());
+			} finally {
+				FilterChainTargetHolder.setCloseCallback(null);
+			}
+//			setState(new CloseRequested(callback));
 		}
 		
 	}
@@ -783,13 +787,17 @@ class ChannelImpl implements Channel, InternalChannel {
 		@Override
 		public void checkCondition() {
 			if (isReadyToShutdown()) {
-				DefaultCloseChannelRequest request = new DefaultCloseChannelRequest();
-				FilterChainTargetHolder.setCloseCallback(callback);
-				try {
-					channelHandler.channelCloseRequested(request);
-				} finally {
-					FilterChainTargetHolder.setCloseCallback(null);
-				}
+				channelHandler.channelClosed();
+				callback.closeAccepted();
+
+//
+//				DefaultCloseChannelRequest request = new DefaultCloseChannelRequest();
+//				FilterChainTargetHolder.setCloseCallback(callback);
+//				try {
+//					channelHandler.channelCloseRequested(request);
+//				} finally {
+//					FilterChainTargetHolder.setCloseCallback(null);
+//				}
 			}
 		}
 	}
