@@ -789,15 +789,6 @@ class ChannelImpl implements Channel, InternalChannel {
 			if (isReadyToShutdown()) {
 				channelHandler.channelClosed();
 				callback.closeAccepted();
-
-//
-//				DefaultCloseChannelRequest request = new DefaultCloseChannelRequest();
-//				FilterChainTargetHolder.setCloseCallback(callback);
-//				try {
-//					channelHandler.channelCloseRequested(request);
-//				} finally {
-//					FilterChainTargetHolder.setCloseCallback(null);
-//				}
 			}
 		}
 	}
