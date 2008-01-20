@@ -61,6 +61,17 @@
 
 - next tasks
 
+  - change internals to frame handling
+    - API changes
+    - support assembling messages in ChannelHandler or ChannelFilter
+    - support preemptive ERR replies (reply to incoming message)
+      - i.e. do not call ChannelHandler.messageReceived when premature ERR was created
+      - see also section 2.6.3 of the BEEP specification
+    - supporting receiving preemptive ERR replies seems not possible
+      - message will already be waiting for transport in the ChannelController
+      - there is no way to stop that (feedback from session to stream layer...)
+    - ReplyHandlerWrapper must be a bit more conservative about completing replies
+  - allow termination of Session (i.e. dropping TCP connection)
   - filtering
     - review ChannelFilter interface
     - write LoggingChannelFilter, just for fun
