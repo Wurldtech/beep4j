@@ -1,14 +1,3 @@
-- verify call sequences on handler classes
-  - for start type notifications, change state first, then notify handler
-  - for end type notifications, first notify handler, then change state
-  - ChannelHandler#channelCloseRequested is called a potentially a long time after 
-    the CloseRequested state is attained; this could lead to problems (i.e. exceptions)
-    when the application calls methods on Channel
-    - solution 1: call ChannelHandler#channelCloseRequested immediately (i.e. before
-                  all replies have been sent)
-    - solution 2: an intermediate state that allows everything until the request is passed
-                  to the handler
-
 - consider decorator style implementation for filtering on Channel interface
   - first, the state must be considered
   - then the chain can be called
@@ -80,5 +69,18 @@
     - low-level BEEP logging
  
   
-  
-  
+ChannelHandler
++receivedMSG(message:Object,reply:Reply)
+
+ReplyHandler
++receivedRPY(message:Object)
++receivedERR(message:Object)
++receivedANS(message:Object)
++receivedNUL(message:Object)
+
+- message is either a Frame, a Message, or an arbitrary application object
+
+- create BeepFrameSequencingValidator
+- replaces MessageAssembler
+- validates the various BEEP sequencing constraints
+- ChannelFilter / ChannelHandler / ReplyHandler can be sure that those constraints hold
