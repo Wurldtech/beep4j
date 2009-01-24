@@ -4,13 +4,13 @@
 	<classpathentry kind="src" output="target/test-classes" path="src/test/java"/>
 	<classpathentry excluding="**/*.java" kind="src" output="target/test-classes" path="src/test/resources"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="lib/backport-util-concurrent-2.2.jar"/>
 	<classpathentry kind="lib" path="lib/easymock-1.1.jar"/>
 	<classpathentry kind="lib" path="lib/hamcrest-core-1.1.jar"/>
 	<classpathentry kind="lib" path="lib/hamcrest-library-1.1.jar"/>
-	<classpathentry kind="lib" path="lib/jmock-2.4.0.jar"/>
-	<classpathentry kind="lib" path="lib/jmock-junit3-2.4.0.jar"/>
+	<classpathentry kind="lib" path="lib/jmock-1.1.0.jar"/>
 	<classpathentry kind="lib" path="lib/junit-3.8.1.jar"/>
-	<classpathentry kind="lib" path="lib/mina-core-1.1.5.jar"/>
+	<classpathentry kind="lib" path="lib/mina-core-1.1.0.jar"/>
 	<classpathentry kind="lib" path="lib/slf4j-api-1.4.3.jar"/>
 	<classpathentry kind="lib" path="lib/slf4j-simple-1.4.3.jar"/>
 	<classpathentry kind="output" path="target/classes"/>

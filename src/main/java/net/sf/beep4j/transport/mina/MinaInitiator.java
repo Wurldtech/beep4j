@@ -19,6 +19,7 @@ import java.net.SocketAddress;
 
 import net.sf.beep4j.Initiator;
 import net.sf.beep4j.SessionHandler;
+import net.sf.beep4j.internal.tcp.TCPMapping;
 import net.sf.beep4j.internal.util.Assert;
 
 import org.apache.mina.common.IoConnector;
@@ -26,14 +27,20 @@ import org.apache.mina.common.IoConnector;
 public class MinaInitiator implements Initiator {
 
 	private final IoConnector connector;
+	private int receiveBufferSize;
 	
-	public MinaInitiator(IoConnector connector) {
+        public MinaInitiator(IoConnector connector) {
+            this(connector, TCPMapping.DEFAULT_BUFFER_SIZE);
+        }
+        
+	public MinaInitiator(IoConnector connector, int receiveBufferSize) {
 		Assert.notNull("connector", connector);
 		this.connector = connector;
+		this.receiveBufferSize = receiveBufferSize;
 	}
 	
 	public void connect(SocketAddress address, SessionHandler handler) {
-		MinaTransport transport = new MinaTransport(true, handler);
+		MinaTransport transport = new MinaTransport(true, handler, receiveBufferSize);
 		connector.connect(address, transport);
 	}
 

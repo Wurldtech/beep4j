@@ -37,7 +37,11 @@ public class MinaTransport extends IoHandlerAdapter implements Transport {
 	private TransportContext context;
 	
 	public MinaTransport(boolean initiator, SessionHandler sessionHandler) {
-		TransportMapping mapping = new TCPMapping(this);
+	    this(initiator, sessionHandler, TCPMapping.DEFAULT_BUFFER_SIZE);
+	}
+        
+	public MinaTransport(boolean initiator, SessionHandler sessionHandler, int receiveBufferSize) {
+		TransportMapping mapping = new TCPMapping(this, null, receiveBufferSize);
 		context = new SessionImpl(initiator, sessionHandler, mapping);
 	}
 	

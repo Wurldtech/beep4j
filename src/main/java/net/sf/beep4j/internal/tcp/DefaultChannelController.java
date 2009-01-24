@@ -50,13 +50,20 @@ public class DefaultChannelController implements ChannelController {
 	private final Transport transport;
 	
 	private long seqno;
+
+	private int advertisedSize;
 	
-	public DefaultChannelController(Transport transport, int channel, int window) {
+	public DefaultChannelController(Transport transport, int channel, int bufferSize) {
+	    this(transport, channel, bufferSize, bufferSize);
+	}
+	
+	public DefaultChannelController(Transport transport, int channel, int sendBufferSize, int receiveBufferSize) {
 		Assert.notNull("transport", transport);
 		this.transport = transport;
 		this.channel = channel;
-		this.senderWindow = new SlidingWindow(window);
-		this.window = new SlidingWindow(window);
+		this.senderWindow = new SlidingWindow(sendBufferSize);
+		this.window = new SlidingWindow(receiveBufferSize);
+		this.advertisedSize = sendBufferSize;
 	}
 	
 	public void updateSendWindow(long ackno, int size) {
@@ -162,9 +169,10 @@ public class DefaultChannelController implements ChannelController {
 		window.moveBy(size);
 		LOG.info("receiver window = " + window);
 		
-		if (window.remaining() <= 0.5 * window.getWindowSize()) {
+		if (window.getPosition() > 0.5 * advertisedSize) {
 			long ackno = seqno + size;
 			int windowSize = window.getWindowSize();
+			advertisedSize = windowSize;
 			window.slide(ackno, windowSize);
 			LOG.info("sending SEQ frame on channel " + channel + ": ackno=" + ackno + ",window=" + windowSize);
 			LOG.info("receiver window = " + window);

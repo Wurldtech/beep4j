@@ -26,30 +26,37 @@ import net.sf.beep4j.transport.Transport;
 
 public class TCPMapping implements TransportMapping, ChannelControllerFactory {
 
-	private static final int DEFAULT_BUFFER_SIZE = 4096;
+	public static final int DEFAULT_BUFFER_SIZE = 4096;
 	
 	private final Transport transport;
 	
 	private final ChannelControllerFactory factory;
 	
-	private final int bufferSize;
+	private final int sendBufferSize;
+        private final int receiveBufferSize;
 	
 	private final Map<Integer, ChannelController> channels = 
 			new HashMap<Integer, ChannelController>();
+
 	
 	public TCPMapping(Transport transport) {
 		this(transport, null);
 	}
 	
 	public TCPMapping(Transport transport, ChannelControllerFactory factory) {
-		this(transport, factory, DEFAULT_BUFFER_SIZE);
+		this(transport, factory, DEFAULT_BUFFER_SIZE, DEFAULT_BUFFER_SIZE);
 	}
 	
-	public TCPMapping(Transport transport, ChannelControllerFactory factory, int bufferSize) {
+	public TCPMapping(Transport transport, ChannelControllerFactory factory, int receiveBufferSize) {
+	    this(transport, factory, DEFAULT_BUFFER_SIZE, receiveBufferSize );
+	}
+	
+	public TCPMapping(Transport transport, ChannelControllerFactory factory, int sendBufferSize, int receiveBufferSize) {
 		Assert.notNull("transport", transport);
 		this.transport = transport;
 		this.factory = factory != null ? factory : this;
-		this.bufferSize = bufferSize;
+		this.sendBufferSize = sendBufferSize;
+		this.receiveBufferSize = receiveBufferSize;
 	}
 	
 	
@@ -74,7 +81,7 @@ public class TCPMapping implements TransportMapping, ChannelControllerFactory {
 	// --> start of ChannelControllerFactory methods <--
 	
 	public DefaultChannelController createChannelController(int channelNumber, Transport transport) {
-		return new DefaultChannelController(transport, channelNumber, bufferSize);
+		return new DefaultChannelController(transport, channelNumber, sendBufferSize, receiveBufferSize);
 	}
 	
 	// --> end of ChannelControllerFactory methods <--
