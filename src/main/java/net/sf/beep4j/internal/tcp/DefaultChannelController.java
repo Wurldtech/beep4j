@@ -165,13 +165,19 @@ public class DefaultChannelController implements ChannelController {
 					+ "match expected sequence number " + window.getPosition());
 		}
 		
-		LOG.info("frameReceived on channel " + channel + ": seqno=" + seqno + ",size=" + size);
+		LOG.info("frameReceived on channel " + channel + ": seqno=" + seqno + ",size=" + size + ",advertised=" + advertisedSize);
 		window.moveBy(size);
 		LOG.info("receiver window = " + window);
-		
-		if (window.getPosition() > 0.5 * advertisedSize) {
+
+		// If we haven't advertised to our peer that we have a non-standard window size,
+		// do so at the first opportunity otherwise we will deadlock, because the peer
+        // has filled up the 4K window, but we aren't going to respond until more data
+        // is written.  Otherwise, make sure we only advertise when the window
+        // has moved by more than 1/2 of the window size.
+		int windowSize = window.getWindowSize();
+		if (advertisedSize != windowSize ||
+				window.remaining() <= 0.5 * windowSize) {
 			long ackno = seqno + size;
-			int windowSize = window.getWindowSize();
 			advertisedSize = windowSize;
 			window.slide(ackno, windowSize);
 			LOG.info("sending SEQ frame on channel " + channel + ": ackno=" + ackno + ",window=" + windowSize);

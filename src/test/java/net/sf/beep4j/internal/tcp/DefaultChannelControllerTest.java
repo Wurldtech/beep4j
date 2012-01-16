@@ -222,6 +222,40 @@ public class DefaultChannelControllerTest extends TestCase {
 		transportCtrl.verify();
 	}
 	
+	public void testSendWindowOpenedInHalfBufferIncrements() throws Exception {
+		// define expectations
+		transport.sendBytes(createSEQFrame(0, 2100, 4096));
+		transport.sendBytes(createSEQFrame(0, 4200, 4096));
+		transport.sendBytes(createSEQFrame(0, 6300, 4096));
+		transportCtrl.replay();
+
+		// test
+		ChannelController controller = new DefaultChannelController(transport, 0, 4096);
+		//   Send series of frames smaller than 1/4 buffer size, window
+		//   should move by increments of >= than 1/2 buffer size.
+		for (int size = 0; size < 6500; size += 100) {
+			controller.frameReceived(size, 100);
+		}
+
+		// verify
+		transportCtrl.verify();
+	}
+
+	public void testSendMultipleUpdateToLargeWindow() throws Exception {
+		// define expectations
+		transport.sendBytes(createSEQFrame(0, 2000, 8000));
+		transport.sendBytes(createSEQFrame(0, 9000, 8000));
+		transportCtrl.replay();
+
+		// test
+		ChannelController controller = new DefaultChannelController(transport, 0, 4096, 8000);
+		controller.frameReceived(0, 2000);
+		controller.frameReceived(2000, 7000);
+
+		// verify
+		transportCtrl.verify();
+	}
+	
 	private ByteBuffer createSEQFrame(int channel, long ackno, int window) {
 		StringBuilder buf = new StringBuilder(SEQHeader.TYPE);
 		buf.append(" ");
