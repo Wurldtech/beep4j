@@ -41,6 +41,9 @@ public class MinaInitiator implements Initiator {
 	
 	public void connect(SocketAddress address, SessionHandler handler) {
 		MinaTransport transport = new MinaTransport(true, handler, receiveBufferSize);
+		// TODO this returns a connect future... we should be doing something like:
+		//   future.addListener(handler)
+		// on it!
 		connector.connect(address, transport);
 	}
 
